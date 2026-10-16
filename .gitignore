@@ -1,0 +1,8 @@
+data/*
+!data/.gitkeep
+logs/
+.history/
+.DS_Store
+__pycache__/
+*.pyc
+.pytest_cache/
