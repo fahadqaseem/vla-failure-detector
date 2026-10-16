@@ -32,6 +32,8 @@ p.add_argument("--seed", type=int, default=0)
 p.add_argument("--extra_steps", type=int, default=200,
                help="replays may run this many steps past 520, so late checkpoints are not doomed by the clock")
 p.add_argument("--full_curve", action="store_true")
+p.add_argument("--t_min", type=int, default=None, help="only scan checkpoints at or after this step (refinement)")
+p.add_argument("--t_max", type=int, default=None, help="only scan checkpoints at or before this step (refinement)")
 p.add_argument("--out", default="data/pnr")
 args = p.parse_args()
 assert args.every % CHUNK == 0, "--every must be a multiple of the action chunk (8)"
@@ -55,7 +57,8 @@ for f, ep in todo:
     q_steps = [int(s) for s in ep["query_steps"]]
     states = {s: ep["query_states"][i] for i, s in enumerate(q_steps)}
     grippers = {s: ep["query_grippers"][i] for i, s in enumerate(q_steps)}
-    checkpoints = [s for s in q_steps if s % args.every == 0]
+    checkpoints = [s for s in q_steps if s % args.every == 0
+                   and (args.t_min is None or s >= args.t_min) and (args.t_max is None or s <= args.t_max)]
     t_start = time.time()
 
     end_steps = {}  # policy step at which each replay ended (success step, or the horizon if it failed)
@@ -95,7 +98,7 @@ for f, ep in todo:
         "end_steps": [end_steps[c] for c in scanned],
         "params": {"every": args.every, "K": args.K, "min_fail": args.min_fail,
                    "noise_std": args.noise_std, "seed": args.seed, "full_curve": args.full_curve,
-                   "extra_steps": args.extra_steps},
+                   "extra_steps": args.extra_steps, "t_min": args.t_min, "t_max": args.t_max},
         "minutes": round((time.time() - t_start) / 60, 1),
     }
     with open(out_path, "w") as fh:
