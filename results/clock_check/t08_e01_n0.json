@@ -1,0 +1,41 @@
+{
+ "episode_id": "t08_e01_n0",
+ "task_id": 8,
+ "episode_idx": 1,
+ "description": "put both moka pots on the stove",
+ "recorded_success": false,
+ "induced": false,
+ "t_end": 520,
+ "checkpoints": [
+  0
+ ],
+ "successes": [
+  [
+   1,
+   1,
+   1,
+   1,
+   1
+  ]
+ ],
+ "t_pnr": null,
+ "end_steps": [
+  [
+   350,
+   495,
+   384,
+   398,
+   509
+  ]
+ ],
+ "params": {
+  "every": 520,
+  "K": 5,
+  "min_fail": 3,
+  "noise_std": 0.05,
+  "seed": 0,
+  "full_curve": true,
+  "extra_steps": 0
+ },
+ "minutes": 10.1
+}

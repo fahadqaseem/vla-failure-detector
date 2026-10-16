@@ -1,0 +1,41 @@
+{
+ "episode_id": "t06_e00_n0",
+ "task_id": 6,
+ "episode_idx": 0,
+ "description": "put the white mug on the plate and put the chocolate pudding to the right of the plate",
+ "recorded_success": false,
+ "induced": false,
+ "t_end": 520,
+ "checkpoints": [
+  0
+ ],
+ "successes": [
+  [
+   0,
+   1,
+   1,
+   1,
+   1
+  ]
+ ],
+ "t_pnr": null,
+ "end_steps": [
+  [
+   520,
+   277,
+   211,
+   211,
+   207
+  ]
+ ],
+ "params": {
+  "every": 520,
+  "K": 5,
+  "min_fail": 3,
+  "noise_std": 0.05,
+  "seed": 0,
+  "full_curve": true,
+  "extra_steps": 0
+ },
+ "minutes": 6.6
+}
