@@ -1,0 +1,94 @@
+{
+ "episode_id": "t00_e00_n0.15",
+ "task_id": 0,
+ "episode_idx": 0,
+ "description": "put both the alphabet soup and the tomato sauce in the basket",
+ "recorded_success": false,
+ "induced": true,
+ "t_end": 520,
+ "checkpoints": [
+  0,
+  16,
+  32,
+  48,
+  64,
+  80
+ ],
+ "successes": [
+  [
+   1,
+   1,
+   1
+  ],
+  [
+   1,
+   0,
+   1
+  ],
+  [
+   1,
+   1,
+   1
+  ],
+  [
+   0,
+   0,
+   1
+  ],
+  [
+   1,
+   0,
+   0
+  ],
+  [
+   0,
+   0,
+   0
+  ]
+ ],
+ "t_pnr": 48,
+ "end_steps": [
+  [
+   275,
+   275,
+   276
+  ],
+  [
+   323,
+   720,
+   306
+  ],
+  [
+   258,
+   263,
+   269
+  ],
+  [
+   720,
+   720,
+   316
+  ],
+  [
+   607,
+   720,
+   720
+  ],
+  [
+   720,
+   720,
+   720
+  ]
+ ],
+ "params": {
+  "every": 16,
+  "K": 3,
+  "min_fail": 2,
+  "noise_std": 0.05,
+  "seed": 0,
+  "full_curve": true,
+  "extra_steps": 200,
+  "t_min": 0,
+  "t_max": 80
+ },
+ "minutes": 43.3
+}
