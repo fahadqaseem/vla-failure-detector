@@ -4,18 +4,19 @@ Goal: one figure from real rollouts showing replay risk over time for one or two
 t_pnr marked, plus the replay determinism result. Small n is fine if it is honest. If setup blocks you,
 bring the definition, the pipeline and the exact blocker.
 
-Everything runs directly on the Mac (no Slurm). Timings below are unknown until step 1 prints the
-seconds per policy query; update this file with the real numbers.
+Everything runs directly on the Mac (no Slurm). Measured on the M4 Pro / 24 GB, Oct 16 (see results/LOG.md):
+model load about 13 s; one 520-step episode about 140-180 s; a successful episode about 60-100 s;
+full-curve PNR scan (`--every 80 --K 3`) of one failed episode about 40 min.
 
-| step | command |
-|---|---|
-| 1. env check | `python scripts/00_check_env.py` (first run downloads the 15 GB checkpoint) |
-| 2. one episode | `python scripts/01_collect.py --tasks 0 --episodes 1` |
-| 3. determinism | `python scripts/02_replay_test.py --episode data/rollouts/t00_e00_n0.npz --steps 40 --full` |
-| 4. failures fast | `python scripts/01_collect.py --tasks 0 1 --episodes 2 --noise_std 0.15` (induced, labelled) |
-| 4b. natural failures | `python scripts/01_collect.py --tasks 0 1 2 3 4 5 6 7 8 9 --episodes 2` (only if time allows; failures are rare) |
-| 5. PNR scan, 1 episode, full curve | `python scripts/03_pnr_scan.py --episodes "data/rollouts/<failed_id>.npz" --every 80 --K 3 --min_fail 2 --full_curve` |
-| 6. analyse | `python scripts/04_analyze.py` |
+| step | command | measured time |
+|---|---|---|
+| 1. env check | `python scripts/00_check_env.py` (first run downloads the 15 GB checkpoint) | about 1 min |
+| 2. one episode | `python scripts/01_collect.py --tasks 0 --episodes 1` | about 1.5-3 min |
+| 3. determinism | `python scripts/02_replay_test.py --episode data/rollouts/t00_e00_n0.npz --steps 40 --full` | about 1.5 min |
+| 4. failures fast | `python scripts/01_collect.py --tasks 0 1 --episodes 2 --noise_std 0.15` (induced, labelled) | about 7 min |
+| 4b. natural failures | `python scripts/01_collect.py --tasks 0 1 2 3 4 5 6 7 8 9 --episodes 2` (only if time allows; failures are rare) | about 25 min |
+| 5. PNR scan, 1 episode, full curve | `python scripts/03_pnr_scan.py --episodes "data/rollouts/<failed_id>.npz" --every 80 --K 3 --min_fail 2 --full_curve` | about 40 min |
+| 6. analyse | `python scripts/04_analyze.py` | seconds |
 
 Budget rule: if step 1 shows more than about 3 s per policy query, or the Mac is swapping heavily, skip 4b and scan only one induced
 failure with `--every 80 --K 3`.

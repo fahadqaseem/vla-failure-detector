@@ -1,0 +1,6 @@
+episode_id,task_id,induced,recorded_success,t_end,t_pnr,t_alarm,t_onset,detection_window,intervention_window,value_at_alarm,alarm_class
+t00_e00_n0.15,0,True,False,520,80,,,,,,
+t00_e00_n0,0,False,True,252,,,,,,,
+t00_e01_n0.15,0,True,False,520,80,,,,,,
+t06_e00_n0,6,False,False,520,,,,,,,
+t08_e01_n0,8,False,False,520,,,,,,,

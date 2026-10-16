@@ -96,7 +96,8 @@ for s in scans:
         continue
     risk = 1 - value_curve(np.array(s["successes"]))
     line, = ax.plot(s["checkpoints"], risk, marker="o", ms=3, lw=1.2, alpha=0.8,
-                    ls="--" if s["induced"] else "-")
+                    ls="--" if s["induced"] else "-",
+                    label=f"{s['episode_id']} ({'induced' if s['induced'] else 'natural'})")
     if s["t_pnr"] is not None:
         ax.axvline(s["t_pnr"], color=line.get_color(), lw=0.8, alpha=0.5)
     if s["episode_id"] in onsets:
@@ -104,6 +105,7 @@ for s in scans:
 ax.set_xlabel("policy step")
 ax.set_ylabel("replay risk = 1 - success rate")
 ax.set_ylim(-0.05, 1.08)
+ax.legend(loc="center right", fontsize=8)
 ax.set_title("Replay risk per failed episode (vertical line = t_pnr, triangle = human onset)")
 fig.tight_layout()
 fig.savefig(os.path.join(args.out, "risk_curves.png"), dpi=160)
