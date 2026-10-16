@@ -103,19 +103,37 @@ class Rollout:
     t_end: int                                            # policy steps executed (excludes the 10 wait steps)
     query_steps: List[int] = field(default_factory=list)  # policy step at each model query (chunk boundary)
     query_states: List[np.ndarray] = field(default_factory=list)  # flattened MuJoCo state at each query
+    query_grippers: List[np.ndarray] = field(default_factory=list)  # gripper command counter at each query
     actions: List[np.ndarray] = field(default_factory=list)       # executed env actions, one per step
     eef: List[np.ndarray] = field(default_factory=list)           # end-effector position after each step
     frames: List[np.ndarray] = field(default_factory=list)        # agentview frames (only if save_frames)
 
 
-def rollout(env, policy: Policy, description: str, *, init_state=None, start_state=None, t0: int = 0,
-            noise_std: float = 0.0, rng: Optional[np.random.Generator] = None,
+def restore(env, state, gripper):
+    """Put the env back at a saved query: MuJoCo state plus the two pieces of robosuite state that
+    get_sim_state() does not hold (found by 02_replay_test, Oct 16 2026). Without them a replay of the
+    recorded actions drifts 30+ mm within 40 steps; with them it stays under 0.1 mm.
+      1. The arm controller caches the hand pose and only re-reads it after its own control step, so after
+         reset + set_init_state it still holds the reset pose. Force a refresh.
+      2. The Panda gripper keeps a command counter (-1 open .. 1 closed) that reset sets to 0. Put it back.
+    env.reset() rebuilds the robot objects, so look the robot up after the reset.
+    """
+    env.reset()
+    obs = env.set_init_state(state)
+    robot = env.env.robots[0]
+    robot.controller.update(force=True)
+    robot.gripper.current_action = np.array(gripper, dtype=np.float64).copy()
+    return obs
+
+
+def rollout(env, policy: Policy, description: str, *, init_state=None, start_state=None, start_gripper=None,
+            t0: int = 0, noise_std: float = 0.0, rng: Optional[np.random.Generator] = None,
             record_states: bool = True, save_frames: bool = False, limit: Optional[int] = None,
             horizon: Optional[int] = None) -> Rollout:
     """Run one episode.
 
     Fresh episode:  pass init_state (one of the 50 LIBERO initial states). Does the 10 wait steps first.
-    Replay:         pass start_state (a saved query state) and t0 (its policy step). No wait steps.
+    Replay:         pass start_state and start_gripper (saved at a query) and t0 (its policy step). No wait steps.
     noise_std:      Gaussian noise added to the 6 arm action dims after processing (gripper untouched).
     limit:          stop after this many policy steps (used by the replay test).
     horizon:        last allowed policy step (default 520). PNR replays get extra time so late
@@ -123,11 +141,13 @@ def rollout(env, policy: Policy, description: str, *, init_state=None, start_sta
     """
     assert (init_state is None) != (start_state is None), "pass exactly one of init_state / start_state"
     rng = rng or np.random.default_rng()
-    env.reset()
     if start_state is not None:
-        obs = env.set_init_state(start_state)
+        assert start_gripper is not None, "replays need the saved gripper counter too (see restore)"
+        obs = restore(env, start_state, start_gripper)
         t = t0
     else:
+        # Same as the official OFT eval: reset, set the initial state, then 10 no-op steps.
+        env.reset()
         obs = env.set_init_state(init_state)
         for _ in range(WAIT_STEPS):
             obs, _, _, _ = env.step(get_libero_dummy_action(MODEL_FAMILY))
@@ -142,6 +162,7 @@ def rollout(env, policy: Policy, description: str, *, init_state=None, start_sta
             if record_states:
                 out.query_steps.append(t)
                 out.query_states.append(env.get_sim_state().copy())
+                out.query_grippers.append(np.array(env.env.robots[0].gripper.current_action, dtype=np.float64))
             queue.extend(policy.act(obs, description))
         action = process_action(np.array(queue.popleft(), dtype=np.float64, copy=True), MODEL_FAMILY)
         if noise_std > 0:
@@ -169,6 +190,7 @@ def save_episode(path: str, r: Rollout, *, task_id: int, episode_idx: int, descr
         init_state=np.asarray(init_state),
         query_steps=np.asarray(r.query_steps, dtype=np.int64),
         query_states=np.stack(r.query_states) if r.query_states else np.zeros((0,)),
+        query_grippers=np.stack(r.query_grippers) if r.query_grippers else np.zeros((0, 2)),
         actions=np.stack(r.actions) if r.actions else np.zeros((0, 7)),
         eef=np.stack(r.eef) if r.eef else np.zeros((0, 3)),
     )

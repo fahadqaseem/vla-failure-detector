@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np  # noqa: E402
 
-from pnr.sim import Policy, make_task, rollout  # noqa: E402
+from pnr.sim import Policy, make_task, restore, rollout  # noqa: E402
 
 p = argparse.ArgumentParser()
 p.add_argument("--episode", required=True)
@@ -25,20 +25,19 @@ p.add_argument("--tol_m", type=float, default=0.005, help="max allowed eef devia
 args = p.parse_args()
 
 ep = np.load(args.episode, allow_pickle=True)
-q_steps, q_states, eef = ep["query_steps"], ep["query_states"], ep["eef"]
+q_steps, q_states, q_grip, eef = ep["query_steps"], ep["query_states"], ep["query_grippers"], ep["eef"]
 qi = len(q_steps) // 2 if args.query < 0 else args.query
 t0 = int(q_steps[qi])
 env, desc, _ = make_task(int(ep["task_id"]))
 policy = Policy()
 
 # 1) State restore is exact?
-env.reset()
-env.set_init_state(q_states[qi])
+restore(env, q_states[qi], q_grip[qi])
 state_err = float(np.abs(env.get_sim_state() - q_states[qi]).max())
 print(f"restore query {qi} (policy step {t0}): max |state diff| = {state_err:.2e}")
 
 # 2) Short replay matches the recorded trajectory?
-r = rollout(env, policy, desc, start_state=q_states[qi], t0=t0, limit=args.steps, record_states=False)
+r = rollout(env, policy, desc, start_state=q_states[qi], start_gripper=q_grip[qi], t0=t0, limit=args.steps, record_states=False)
 n = min(len(r.eef), len(eef) - t0)
 dev = np.linalg.norm(np.stack(r.eef[:n]) - eef[t0:t0 + n], axis=1)
 print(f"replayed {n} steps: eef deviation max {dev.max() * 1000:.2f} mm, mean {dev.mean() * 1000:.2f} mm")
@@ -46,7 +45,7 @@ ok = dev.max() <= args.tol_m
 
 # 3) Full replay reaches the same outcome?
 if args.full:
-    rf = rollout(env, policy, desc, start_state=q_states[qi], t0=t0, record_states=False)
+    rf = rollout(env, policy, desc, start_state=q_states[qi], start_gripper=q_grip[qi], t0=t0, record_states=False)
     same = bool(rf.success) == bool(ep["success"])
     print(f"full replay: success={rf.success} (recorded {bool(ep['success'])}), steps {rf.t_end} (recorded {int(ep['t_end'])})")
     ok = ok and same
