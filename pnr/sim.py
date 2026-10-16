@@ -42,9 +42,25 @@ if (not torch.cuda.is_available() and getattr(torch.backends, "mps", None) is no
     _oft_utils.DEVICE = _oft_robot_utils.DEVICE = torch.device("mps")
 DEVICE = _oft_utils.DEVICE
 
+# The action head and proprio projector files were saved on a CUDA GPU. Without CUDA, torch.load must map them
+# to the CPU first; openvla-oft then moves them to DEVICE itself. On Grid (CUDA) nothing changes.
+if not torch.cuda.is_available():
+    _torch_load = torch.load
+
+    def _load_to_cpu(*args, **kwargs):
+        kwargs.setdefault("map_location", "cpu")
+        return _torch_load(*args, **kwargs)
+
+    torch.load = _load_to_cpu
+
 SUITE = "libero_10"
 CHUNK = 8
 WAIT_STEPS = 10
+
+# openvla-oft guesses the robot platform from the command line text; make sure it picked LIBERO's chunk of 8.
+from prismatic.vla.constants import NUM_ACTIONS_CHUNK  # noqa: E402
+
+assert NUM_ACTIONS_CHUNK == CHUNK, f"openvla-oft chose chunk {NUM_ACTIONS_CHUNK}, expected {CHUNK} (LIBERO)"
 MODEL_FAMILY = "openvla"
 
 
