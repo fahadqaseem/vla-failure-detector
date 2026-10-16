@@ -73,6 +73,12 @@ class Policy:
         (self.model, self.action_head, self.proprio_projector,
          self.noisy_action_projector, self.processor) = initialize_model(self.cfg)
         self.resize_size = get_image_resize_size(self.cfg)
+        if DEVICE.type == "mps":
+            # PyTorch MPS bug (torch 2.3.1, found Oct 16 2026): the action head gets a slice of the LLM hidden
+            # states (a view that starts partway into memory) and on MPS returns wrong actions for it, about half
+            # the right size. The same numbers as a fresh copy give the right answer. So hand it a copy.
+            head_predict = self.action_head.predict_action
+            self.action_head.predict_action = lambda hidden: head_predict(hidden.clone())
 
     def act(self, obs, task_description: str) -> list:
         observation, _ = prepare_observation(obs, self.resize_size)
