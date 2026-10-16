@@ -58,14 +58,18 @@ for f, ep in todo:
     checkpoints = [s for s in q_steps if s % args.every == 0]
     t_start = time.time()
 
+    end_steps = {}  # policy step at which each replay ended (success step, or the horizon if it failed)
+
     def replay_outcomes(c):
         res = []
+        end_steps[c] = []
         for k in range(args.K):
             rng = np.random.default_rng([args.seed, int(ep["task_id"]), int(ep["episode_idx"]), c, k])
             r = rollout(env, policy, desc, start_state=states[c], start_gripper=grippers[c], t0=c, noise_std=args.noise_std,
                         rng=rng, record_states=False,
                         horizon=max_steps() + args.extra_steps)
             res.append(int(r.success))
+            end_steps[c].append(int(r.t_end))
         return res
 
     results = {}
@@ -88,6 +92,7 @@ for f, ep in todo:
         "description": str(ep["description"]), "recorded_success": bool(ep["success"]),
         "induced": bool(ep["induced"]), "t_end": int(ep["t_end"]),
         "checkpoints": scanned, "successes": succ_matrix.tolist(), "t_pnr": t_pnr,
+        "end_steps": [end_steps[c] for c in scanned],
         "params": {"every": args.every, "K": args.K, "min_fail": args.min_fail,
                    "noise_std": args.noise_std, "seed": args.seed, "full_curve": args.full_curve,
                    "extra_steps": args.extra_steps},
