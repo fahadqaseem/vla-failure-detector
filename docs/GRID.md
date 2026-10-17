@@ -36,8 +36,10 @@ https://services.wayne.edu/TDClient/277/Portal/KB/ArticleDet?ID=20349)
   | `gmsap` | 4x H200 per node | msa1-msa4 (128 CPUs, 750 GB RAM) | `-p gmsap -q gpu --gres=gpu:nvidia_h200:1` |
   | `reqp` | mixed, preemptible (jobs get requeued) | many | `-p reqp -q requeue` |
 
-  On Oct 17 alh1-5 and msa1 were draining; only alh6 took L40S jobs. Check with
-  `sinfo -p galhp,gmsap -N -o "%N %G %t"`. To switch to H200, edit the two lines in each sbatch.
+  STANDARD GPU: H200 on `gmsap` (decided Oct 17). On Oct 17 alh1-5 and msa1 were draining and
+  L40S jobs waited for alh6, while msa2-4 had free H200s. Check with
+  `sinfo -p galhp,gmsap -N -o "%N %G %t"`. To change GPU type, edit the partition and gres lines
+  in each sbatch, and say so in results/LOG.md (numbers can differ slightly between GPU types).
 - GPU driver 580.119.02 (CUDA 13.0) on alh6. The torch 2.2.0+cu121 wheel brings its own CUDA,
   so no `module load cuda` is needed.
 - Modules: `cuda/11.8` to `cuda/12.4` (default), `python/2.7` to `python/3.11`, `gnu7` (gcc 7.3.0,
@@ -60,13 +62,13 @@ https://services.wayne.edu/TDClient/277/Portal/KB/ArticleDet?ID=20349)
 
 ## Jobs
 
-- Templates in `slurm/` use `galhp`, QoS `gpu`, one L40S. Output goes to `logs/` (git-ignored).
+- Templates in `slurm/` use `gmsap`, QoS `gpu`, one H200. Output goes to `logs/` (git-ignored).
 - `sbatch slurm/check.sbatch` prints `nvidia-smi`, then runs `00_check_env.py` (about 3 min;
   model load about 100 s because 15 GB is read from home).
 - `ARGS="--tasks 0 --episodes 1" sbatch slurm/collect.sbatch` (default: 10 tasks x 3 episodes).
 - `EP=data/rollouts/<id>.npz sbatch slurm/replay.sbatch`.
 - `squeue -u $USER` before resubmitting. Never run the model on the login node.
-- Headless rendering: `MUJOCO_GL=egl`, `PYOPENGL_PLATFORM=egl` (set in common.sh; works on alh6).
+- Headless rendering: `MUJOCO_GL=egl`, `PYOPENGL_PLATFORM=egl` (set in common.sh).
 - Run Claude Code CLI in the Grid terminal (over VS Code Remote-SSH the extension panel is less reliable).
 
 ## Discovery commands (rerun to check)
