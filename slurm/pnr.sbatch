@@ -7,5 +7,7 @@
 #SBATCH --mem=48G
 #SBATCH --time=04:00:00
 #SBATCH --output=logs/%x-%j.out
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=hr4625@wayne.edu
 source slurm/common.sh
 python scripts/03_pnr_scan.py --episodes "${EPS:-data/rollouts/*.npz}"

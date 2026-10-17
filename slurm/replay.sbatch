@@ -7,5 +7,7 @@
 #SBATCH --mem=48G
 #SBATCH --time=00:30:00
 #SBATCH --output=logs/%x-%j.out
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=hr4625@wayne.edu
 source slurm/common.sh
 python scripts/02_replay_test.py --episode $EP --steps 80 --full

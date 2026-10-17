@@ -7,6 +7,8 @@
 #SBATCH --mem=48G
 #SBATCH --time=00:30:00
 #SBATCH --output=logs/%x-%j.out
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=hr4625@wayne.edu
 source slurm/common.sh
 nvidia-smi
 python scripts/00_check_env.py
