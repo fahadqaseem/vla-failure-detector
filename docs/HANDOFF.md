@@ -59,7 +59,8 @@ Step D. Checks on a GPU node, in order, each logged in results/LOG.md:
 2. Collect natural runs on all 10 LIBERO-10 tasks until about 30+ natural failures. Add a slurm
    array job so tasks run in parallel.
 3. Label t_pnr by replay on failures plus about 20 successes, RESCUE-compatible settings
-   (tau 0.5, also 0.3 and 0.7; K 4 expanded to 16 near the switch; Jeffreys lower quantile).
+   (tau 0.5; K 4, 16 at the two checkpoints around the boundary; Jeffreys lower 0.25 quantile;
+   binary search; tau 0.3 / 0.7 only as a sensitivity check from 3 full scans; see CLAUDE.md).
    Ask Fahad before changing code defaults.
 4. Load Fahad's own episode annotations (he will provide the file) and compare with replay t_pnr.
 5. New script 06_train_predictor.py: per-step logistic regression, then a small MLP. Labels 0 before

@@ -20,8 +20,8 @@ Goal for Friday: a first predictor of `t_pnr` tested on unseen tasks, with hones
 | Mon | `02_replay_test.py` passes on Grid (no-noise replay matches) | PASS with drift in mm |
 | Mon | `01_collect.py` also saves per-step hidden features (last layer, the same input SAFE uses) | features shape printed |
 | Mon-Tue | collect natural runs on all 10 LIBERO-10 tasks, enough to get 30+ natural failures; add induced failures only if needed (labelled) | rollouts.csv |
-| Tue | 3 full replay scans (every checkpoint, K 4) to confirm success probability only decreases over time | monotonic yes/no, logged |
-| Tue-Wed | replay labels as Slurm array jobs: binary search over checkpoints (PREFAIL-style), K 4, tau 0.5, on failures + 20 successes; save risk per checkpoint visited | pnr_table.csv |
+| Tue | 3 full replay scans (every checkpoint, K 4) to confirm success probability only decreases over time; sensitivity check tau 0.3, 0.7, "fails every replay" | monotonic yes/no, logged |
+| Tue-Wed | replay labels as Slurm array jobs: binary search over checkpoints (PREFAIL-style), K 4 (16 at the two checkpoints around the boundary), Jeffreys lower 0.25 quantile, tau 0.5, on failures + 20 successes; save risk per checkpoint visited | pnr_table.csv |
 | Wed | load Fahad's own annotations; compare with replay `t_pnr` on shared episodes | small table |
 | Wed | fix and write down the task-held-out split (before any training) | split file committed |
 | Wed-Thu | `06_train_predictor.py`: inputs hidden features + action chunk + eef/proprio (no step index); target risk + 0/1 label; loss BCE + MSE; logistic regression, then small MLP | results table |

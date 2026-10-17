@@ -28,7 +28,8 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
 - Evaluation: binary classification over the WHOLE trajectory against these labels (not against
   the final failure label, not only the first 120 steps). Also report |predicted t_pnr - true t_pnr|
   in steps and false alarms on successful runs. Test on held-out (unseen) tasks.
-- The failure threshold that defines `t_pnr` is a hyperparameter: report at least 50% and 100%.
+- The threshold that defines `t_pnr` is tau = 0.5 (see "Predictor decisions"). tau 0.3, tau 0.7
+  and "fails every replay" are reported only as a sensitivity check from the 3 full scans.
 - Recovery comes after prediction works, and must happen BEFORE `t_pnr`. Prof. Zhu's idea: if the
   predicted risk is high, roll back to an earlier state with lower risk; if low, simply rerun.
 - Timeout trap: OpenVLA-OFT failures are timeouts, so episode length alone separates failures
@@ -37,9 +38,13 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
 
 ### Predictor decisions (Fahad, Oct 17, 2026)
 
-1. Labels by replay: K = 4 replays per checkpoint, tau = 0.5. `t_pnr` is found by binary search
-   over checkpoints (PREFAIL-style). Binary search assumes success probability only goes down over
-   time, so FIRST run 3 full scans (every checkpoint) to confirm that before using it.
+1. Labels by replay, RESCUE-compatible: K = 4 replays per checkpoint, K = 16 at the two
+   checkpoints around the boundary, success estimate = lower 0.25 quantile of
+   Beta(k + 1/2, K - k + 1/2) (Jeffreys), recoverable if estimate >= tau, tau = 0.5.
+   `t_pnr` is found by binary search over checkpoints (PREFAIL-style). Binary search assumes
+   success probability only goes down over time, so FIRST run 3 full scans (every checkpoint) to
+   confirm that before using it. Those 3 scans also give the sensitivity check (tau 0.3, tau 0.7,
+   "fails every replay").
 2. Target: the replay risk score (1 - value) plus the 0/1 label (0 before `t_pnr`, 1 after).
    Loss = BCE on the label + MSE on the risk.
 3. Inputs: VLA hidden features (SAFE-style, last layer at the action tokens), the action chunk,
@@ -91,6 +96,8 @@ step after `t_pnr` shrinks the time left to intervene: the ideal alarm sits righ
 
 ## PNR estimator (operational definition, always report the parameters)
 
+Pilot rule, still the code default in `03_pnr_scan.py` until the binary-search labeller is written
+(then the defaults change to the RESCUE-compatible setting below, approved by Fahad Oct 17).
 From a recorded failed episode, restore the sim state at checkpoints every `--every` policy steps
 (default 40, must be a multiple of the action chunk, 8). From each checkpoint run `K` replays
 (default 5) of the same policy with Gaussian action noise on the 6 arm dims
@@ -102,11 +109,13 @@ Replays may run `--extra_steps` (default 200) past the 520-step limit; otherwise
 look doomed only because the clock runs out. Most LIBERO failures are timeouts, so this matters.
 PNR depends on noise level, K and extra_steps. It is an estimate, not ground truth. Say so on slides.
 
-RESCUE-compatible setting (use for the labels from now on so numbers compare with RESCUE):
-recovery criterion tau = 0.5 (also report 0.3 and 0.7), K = 4 replays per checkpoint, expand to
-K = 16 near the transition, success estimate = lower 0.25 quantile of Beta(k + 1/2, K - k + 1/2)
-(Jeffreys). RESCUE's horizon is the LAST recoverable checkpoint; our `t_pnr` is the first
-checkpoint after it. Ask Fahad before changing the code defaults.
+RESCUE-compatible setting (used for all labels from now on, so numbers compare with RESCUE):
+tau = 0.5, K = 4 replays per checkpoint, K = 16 at the two checkpoints around the boundary,
+success estimate = lower 0.25 quantile of Beta(k + 1/2, K - k + 1/2) (Jeffreys), found by binary
+search (see "Predictor decisions"). tau 0.3, tau 0.7 and "fails every replay" are a sensitivity
+check from the 3 full scans only. RESCUE's horizon is the LAST recoverable checkpoint; our `t_pnr`
+is the first checkpoint after it. Noise 0.05 and extra_steps 200 stay as above. Ask Fahad before
+any other change to the definition or defaults.
 
 ## Setup facts (verified from the openvla-oft source, Oct 2026)
 
