@@ -35,6 +35,24 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
   from successes (timer AUROC 99.5 on whole runs). Always include a timer baseline and make sure
   the model cannot win by counting steps.
 
+### Predictor decisions (Fahad, Oct 17, 2026)
+
+1. Labels by replay: K = 4 replays per checkpoint, tau = 0.5. `t_pnr` is found by binary search
+   over checkpoints (PREFAIL-style). Binary search assumes success probability only goes down over
+   time, so FIRST run 3 full scans (every checkpoint) to confirm that before using it.
+2. Target: the replay risk score (1 - value) plus the 0/1 label (0 before `t_pnr`, 1 after).
+   Loss = BCE on the label + MSE on the risk.
+3. Inputs: VLA hidden features (SAFE-style, last layer at the action tokens), the action chunk,
+   eef position / proprio. NEVER the step index or anything that counts time.
+4. Metrics: timely recall at 5% false alarms on successful runs (threshold set by conformal
+   calibration on successes), |predicted t_pnr - true t_pnr| in steps, eta = predicted / true
+   `t_pnr`, per-step AUROC over the whole run, and the number of late detections (after `t_pnr`).
+5. Baselines: timer (step count), SAFE-style probe (success/fail labels), steps-since-progress.
+6. Task-held-out split, fixed and written down BEFORE any training.
+7. Labelling runs as Slurm array jobs (one array task per episode).
+
+Cite: RESCUE (arXiv 2610.13516), PREFAIL (arXiv 2607.16921), CheckVLA (arXiv 2607.26789).
+
 The pilot (Oct 2 to Oct 16, Mac) measured `t_pnr` = 33 to 48 on one induced failure and found the
 two natural failures recoverable. The Oct 2 numbers (alarm about 90 steps after PNR, onset about
 45 after alarm) are still guesses.
