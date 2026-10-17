@@ -50,13 +50,13 @@ https://services.wayne.edu/TDClient/277/Portal/KB/ArticleDet?ID=20349)
 
 ## Storage
 
-- Home: `df` shows 47 GB for `/wsu` but does not show per-user use, and `quota` prints nothing.
-  The real home limit is NOT confirmed. Use `du -sh ~` to see usage (about 40 GB on Oct 17).
+- Home quota: 4000 GB (`wsuquota`, Oct 17: 39.23 GB used, 110,992 files). Check usage with
+  `wsuquota`; `df` (47 GB) and `quota` (empty) are misleading here.
 - `HF_HOME=~/.cache/huggingface`. Checkpoint `moojink/openvla-7b-oft-finetuned-libero-10`,
   revision 95220f9, is 19 GB there.
 - Scratch: only `/wsu/tmp` (shared, world-writable, same filesystem, may be purged). Used for the
   pip cache only: `PIP_CACHE_DIR=/wsu/tmp/hr4625/pip`. No `/scratch` or project space found.
-- Open: ask WSU about the home quota or lab project storage before collecting hidden features.
+- With 4 TB in home, rollouts, hidden features and scans can all stay in `data/` under the repo.
 
 ## Jobs
 
@@ -77,5 +77,6 @@ sacctmgr -nP show assoc user=$USER format=account,partition,qos
 sacctmgr -nP show qos format=name,maxwall,maxtrespu
 scontrol show partition galhp
 module avail 2>&1 | grep -iE "cuda|python|gcc|gnu|apptainer"
-du -sh ~ ~/.conda/envs/* ~/.cache/huggingface
+wsuquota
+du -sh ~/.conda/envs/* ~/.cache/huggingface
 ```
