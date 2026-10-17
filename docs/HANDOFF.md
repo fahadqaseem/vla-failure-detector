@@ -22,8 +22,9 @@ with Fahad. This file carries everything decided in the planning chat so far.
 
 ## 2. Immediate task: get Grid working (this is where to start)
 
-Fahad connects with VS Code Remote-SSH (host alias `grid`, login usually grid.wayne.edu, password
-plus Duo typed by Fahad). The repo is cloned to ~/vla-failure-detector on Grid.
+Fahad connects VS Code to a Grid COMPUTE NODE (never the login node Warrior) following the official
+WSU procedure written in docs/GRID.md. Login host grid.wayne.edu, AccessID password typed by Fahad.
+The repo is cloned to ~/vla-failure-detector on Grid.
 
 Step A. Discover the cluster (login node, read-only). Run and read:
 ```bash
