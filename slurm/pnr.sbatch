@@ -1,7 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=pnr-pnr
-#SBATCH --partition=TODO_GPU_PARTITION
-#SBATCH --gres=gpu:1
+#SBATCH --partition=galhp
+#SBATCH --qos=gpu
+#SBATCH --gres=gpu:nvidia_l40s:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
 #SBATCH --time=04:00:00
