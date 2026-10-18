@@ -11,6 +11,7 @@ import argparse
 import glob
 import json
 import os
+import subprocess
 import sys
 import time
 
@@ -47,11 +48,41 @@ print(f"{len(files)} episodes found: {len(failed)} failed, scanning {len(todo)}"
 os.makedirs(args.out, exist_ok=True)
 policy = Policy()
 
+def claim(out_path):
+    """Make sure only one job scans an episode, even with two job arrays on the same targets
+    (galhp and preemptible reqp). Lock file = <out>.lock holding the Slurm job id. A job may take the
+    lock if it is free, if it already holds it (a requeued job keeps its id, so it restarts cleanly), or
+    if its owner is no longer in the queue (stale lock from a killed job)."""
+    me = os.environ.get("SLURM_JOB_ID", f"pid{os.getpid()}")
+    lock = out_path + ".lock"
+    for _ in range(2):
+        try:
+            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, me.encode())
+            os.close(fd)
+            return True
+        except FileExistsError:
+            owner = open(lock).read().strip()
+            if owner == me:
+                return True
+            alive = subprocess.run(["squeue", "-h", "-j", owner], capture_output=True, text=True)
+            if alive.returncode == 0 and alive.stdout.strip():
+                print(f"skip {os.path.basename(out_path)}: being scanned by job {owner}")
+                return False
+            if alive.returncode != 0 and "Invalid job id" not in alive.stderr:
+                print(f"skip {os.path.basename(out_path)}: cannot check lock owner {owner} ({alive.stderr.strip()})")
+                return False
+            os.remove(lock)  # stale: owner is gone; try once more to create it
+    return False
+
+
 for f, ep in todo:
     eid = os.path.splitext(os.path.basename(f))[0]
     out_path = os.path.join(args.out, eid + ".json")
     if os.path.exists(out_path):
         print(f"skip {eid} (done)")
+        continue
+    if not claim(out_path):
         continue
     env, desc, _ = make_task(int(ep["task_id"]))
     q_steps = [int(s) for s in ep["query_steps"]]
@@ -101,7 +132,10 @@ for f, ep in todo:
                    "extra_steps": args.extra_steps, "t_min": args.t_min, "t_max": args.t_max},
         "minutes": round((time.time() - t_start) / 60, 1),
     }
-    with open(out_path, "w") as fh:
+    # Write to a temporary file and rename, so a job killed mid-write never leaves a half-written result.
+    with open(out_path + ".tmp", "w") as fh:
         json.dump(record, fh, indent=1)
+    os.replace(out_path + ".tmp", out_path)
+    os.remove(out_path + ".lock")
     print(f"{eid}: t_pnr={t_pnr} (episode ended at {int(ep['t_end'])}) in {record['minutes']} min", flush=True)
     env.close()

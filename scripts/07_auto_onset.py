@@ -9,14 +9,19 @@ is first seen:
   drop          an object held at the previous boundary is no longer held and fell relative to the eef
                 (object z down minus eef z down > --drop_dz), while the gripper was commanded closed the
                 whole chunk (no open command).
-  stuck         the eef has not moved more than --move_m between successive boundaries for --stuck_n
+  stuck         the eef has not moved more than --move_m between successive boundaries for stuck_n
                 boundaries in a row (RESCUE steps-since-progress); stamped when the count reaches stuck_n.
+                stuck_n is chosen automatically (--stuck_n 0): the smallest n >= 5 such that at most
+                --stuck_max_success (5%) of successful episodes contain a stuck event.
   wrong_object  a held object is not one of the task's objects of interest (LIBERO obj_of_interest).
 "held" = object raised more than --lift_dz above its height at step 0 and within --hold_dist of the eef.
 Repeated events: missed_grasp and stuck are counted once per run of consecutive boundaries; wrong_object
 once per object.
-t_onset (automatic) = step of the first event in a failed episode. Events in successful episodes are
-"recovered slips". If scans are given, the intervention window t_onset - t_pnr (tau 0.5) is added.
+Two onsets per failed episode: onset_any = first event of any kind; onset_strict = first missed grasp,
+drop or wrong object (stuck ignored). A failure with no event gets onset None and is a "silent failure"
+(counted separately for each version). Events in successful episodes are "recovered slips".
+If scans are given, the intervention window onset - t_pnr (tau 0.5) is added for both versions.
+Summary: results/auto_onset_summary.md (next to --out).
 
 python scripts/07_auto_onset.py --episodes "data/natural/*/*.npz" --scans "data/full_scans/*.json" --out results/auto_onset.csv
 python scripts/07_auto_onset.py --episodes data/natural/task02/t02_e10_n0.npz --verbose   # per-boundary trace
@@ -41,7 +46,8 @@ p.add_argument("--lift_dz", type=float, default=0.03, help="rise (m) above the s
 p.add_argument("--hold_dist", type=float, default=0.10, help="max object-eef distance (m) for a held object (moka pots are held by the handle, about 8 cm from their origin)")
 p.add_argument("--drop_dz", type=float, default=0.02, help="fall (m) between boundaries that counts as a drop")
 p.add_argument("--move_m", type=float, default=0.01)
-p.add_argument("--stuck_n", type=int, default=5)
+p.add_argument("--stuck_n", type=int, default=0, help="0 = choose automatically (see --stuck_max_success)")
+p.add_argument("--stuck_max_success", type=float, default=0.05)
 p.add_argument("--tau_min_success", type=int, default=3, help="t_pnr rule, as in 06_train_predictor.py (tau 0.5, K 4)")
 p.add_argument("--verbose", action="store_true")
 args = p.parse_args()
@@ -81,7 +87,8 @@ def detect(ep):
     steps = ep["query_steps"].astype(int)
     eef, actions = ep["eef"], ep["actions"]
 
-    events = []  # (step, kind, detail)
+    events = []  # (step, kind, detail); stuck events are added later, once stuck_n is chosen
+    stills = []  # (step, boundaries in a row without a move > move_m)
     z0 = None
     prev_held, prev_z = set(), None
     still, in_miss, wrong_seen = 0, False, set()
@@ -109,13 +116,12 @@ def detect(ep):
             wrong_seen.add(o)
         if k > 0:
             still = still + 1 if np.linalg.norm(eef[s] - eef[steps[k - 1]]) <= args.move_m else 0
-            if still == args.stuck_n:
-                events.append((int(s), "stuck", f"no move > {args.move_m} m for {args.stuck_n} boundaries"))
+        stills.append((int(s), still))
         if args.verbose:
             print(f"  step {s:3d} width {width * 1000:5.1f} mm  cmd {prev_cmd.mean() if len(prev_cmd) else 0:+.2f}  "
                   f"held {sorted(held)}  still {still}")
         prev_held, prev_z = held, z
-    return events
+    return events, stills
 
 
 scans = {}
@@ -124,7 +130,8 @@ for f in glob.glob(args.scans):
     scans[s["episode_id"]] = s
 
 kinds = ["missed_grasp", "drop", "stuck", "wrong_object"]
-rows = []
+strict_kinds = ["missed_grasp", "drop", "wrong_object"]
+eps = []
 for f in sorted(glob.glob(args.episodes)):
     ep = np.load(f, allow_pickle=True)
     if bool(ep["induced"]):
@@ -132,19 +139,42 @@ for f in sorted(glob.glob(args.episodes)):
     eid = os.path.splitext(os.path.basename(f))[0]
     if args.verbose:
         print(eid, str(ep["description"]))
-    events = detect(ep)
-    success = bool(ep["success"])
-    t_onset = events[0][0] if events and not success else None
-    scan = scans.get(eid)
-    t_pnr = t_pnr_from_scan(scan) if scan and not success else None
-    row = dict(episode_id=eid, task_id=int(ep["task_id"]), success=int(success), t_end=int(ep["t_end"]),
-               **{f"n_{k}": sum(ev[1] == k for ev in events) for k in kinds},
-               t_onset=t_onset, onset_event=events[0][1] if t_onset is not None else "",
+    events, stills = detect(ep)
+    eps.append(dict(eid=eid, task=int(ep["task_id"]), success=bool(ep["success"]), t_end=int(ep["t_end"]),
+                    events=events, stills=stills))
+
+# Choose stuck_n: smallest n >= 5 with a stuck event in at most stuck_max_success of successful episodes.
+longest = [max(c for _, c in e["stills"]) for e in eps if e["success"]]
+stuck_n = args.stuck_n
+if stuck_n == 0:
+    stuck_n = 5
+    while np.mean([L >= stuck_n for L in longest]) > args.stuck_max_success:
+        stuck_n += 1
+stuck_rate = {n: np.mean([L >= n for L in longest]) for n in range(5, stuck_n + 1)}
+for e in eps:
+    for s, c in e["stills"]:
+        if c == stuck_n:
+            e["events"].append((s, "stuck", f"no move > {args.move_m} m for {stuck_n} boundaries"))
+    e["events"].sort(key=lambda ev: ev[0])
+
+rows = []
+for e in eps:
+    scan = scans.get(e["eid"])
+    t_pnr = t_pnr_from_scan(scan) if scan and not e["success"] else None
+    first_any = e["events"][0] if e["events"] else None
+    first_strict = next((ev for ev in e["events"] if ev[1] in strict_kinds), None)
+    onset_any = first_any[0] if first_any and not e["success"] else None
+    onset_strict = first_strict[0] if first_strict and not e["success"] else None
+    row = dict(episode_id=e["eid"], task_id=e["task"], success=int(e["success"]), t_end=e["t_end"],
+               **{f"n_{k}": sum(ev[1] == k for ev in e["events"]) for k in kinds},
+               onset_any=onset_any, onset_any_event=first_any[1] if onset_any is not None else "",
+               onset_strict=onset_strict, onset_strict_event=first_strict[1] if onset_strict is not None else "",
                scanned=int(scan is not None), t_pnr=t_pnr,
-               window=(t_onset - t_pnr) if t_onset is not None and t_pnr is not None else None,
-               events="; ".join(f"{s} {k} ({d})" for s, k, d in events))
+               window_any=(onset_any - t_pnr) if onset_any is not None and t_pnr is not None else None,
+               window_strict=(onset_strict - t_pnr) if onset_strict is not None and t_pnr is not None else None,
+               events="; ".join(f"{s} {k} ({d})" for s, k, d in e["events"]))
     rows.append(row)
-    print(f"{eid} success={success} t_onset={t_onset} t_pnr={t_pnr} | {row['events']}", flush=True)
+    print(f"{e['eid']} success={e['success']} onset_any={onset_any} onset_strict={onset_strict} t_pnr={t_pnr} | {row['events']}", flush=True)
 
 os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
 with open(args.out, "w", newline="") as fh:
@@ -154,12 +184,32 @@ with open(args.out, "w", newline="") as fh:
 
 fails = [r for r in rows if not r["success"]]
 succ = [r for r in rows if r["success"]]
-print(f"\n{len(rows)} episodes. Failures: {len(fails)}, with an automatic onset: {sum(r['t_onset'] is not None for r in fails)}. "
-      f"Successes with at least one event (recovered slips): {sum(any(r[f'n_{k}'] for k in kinds) for r in succ)} of {len(succ)}.")
+lines = ["# Automatic onset (07_auto_onset.py)", "",
+         f"{len(rows)} natural episodes: {len(fails)} failures, {len(succ)} successes.",
+         f"stuck_n = {stuck_n} boundaries ({stuck_n * 8} policy steps) without an eef move > {args.move_m} m. "
+         "Share of successes with a stuck event per n: " + ", ".join(f"{n}: {v:.3f}" for n, v in stuck_rate.items()) + ".",
+         f"Thresholds: fully closed < {args.closed_width * 1000:.0f} mm, lifted > {args.lift_dz * 100:.0f} cm, "
+         f"held within {args.hold_dist * 100:.0f} cm, drop > {args.drop_dz * 100:.0f} cm relative to the eef.", "",
+         "| version | failures with onset | silent failures (no event) |", "|---|---|---|"]
+for v in ["any", "strict"]:
+    n_on = sum(r[f"onset_{v}"] is not None for r in fails)
+    silent = [r["episode_id"] for r in fails if r[f"onset_{v}"] is None]
+    lines.append(f"| onset_{v} | {n_on} of {len(fails)} | {len(silent)}: {', '.join(silent)} |")
+lines += ["", "| event | failures with it | first event in failures (onset_any) | successes with it (recovered slips) |",
+          "|---|---|---|---|"]
 for k in kinds:
-    print(f"  {k}: in failures {sum(r[f'n_{k}'] > 0 for r in fails)}/{len(fails)}, "
-          f"in successes {sum(r[f'n_{k}'] > 0 for r in succ)}/{len(succ)}; first event in failures: "
-          f"{sum(r['onset_event'] == k for r in fails)}")
-win = [r for r in fails if r["window"] is not None]
+    lines.append(f"| {k} | {sum(r[f'n_{k}'] > 0 for r in fails)} | {sum(r['onset_any_event'] == k for r in fails)} | "
+                 f"{sum(r[f'n_{k}'] > 0 for r in succ)} |")
+lines.append("")
+lines.append(f"Successes with at least one event: {sum(any(r[f'n_{k}'] for k in kinds) for r in succ)} of {len(succ)}; "
+             f"with a strict event: {sum(any(r[f'n_{k}'] for k in strict_kinds) for r in succ)} of {len(succ)}.")
+win = [r for r in fails if r["scanned"]]
 if win:
-    print("Intervention window t_onset - t_pnr (steps): " + ", ".join(f"{r['episode_id']} {r['window']}" for r in win))
+    lines += ["", "Intervention window onset - t_pnr (steps; tau 0.5; t_pnr 0 = doomed from start):", "",
+              "| episode | t_pnr | onset_any | window_any | onset_strict | window_strict |", "|---|---|---|---|---|---|"]
+    for r in win:
+        lines.append(f"| {r['episode_id']} | {r['t_pnr']} | {r['onset_any']} | {r['window_any']} | "
+                     f"{r['onset_strict']} | {r['window_strict']} |")
+text = "\n".join(lines) + "\n"
+open(os.path.join(os.path.dirname(args.out) or ".", "auto_onset_summary.md"), "w").write(text)
+print(text)
