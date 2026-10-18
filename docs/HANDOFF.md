@@ -9,7 +9,9 @@ UPDATE Oct 18 (details in results/LOG.md): Grid works (L40S on galhp, replay tes
 Episodes now save hidden features (gate: identical actions). 500 natural episodes collected in
 data/natural (28 failures, all timeouts, 7.3 GB). Full scans on 3 failures: binary search for t_pnr
 matches the full scan on 2 of 3; t01_e41 hovers near 50% success and breaks it (40 vs 152 at
-tau 0.5). Fahad decides next how to label (see results/full_scans/summary.md).
+tau 0.5). Fahad decided (Oct 18): labels from FULL scans on all 28 failures + 20 successes (array
+40619263), K 16 near tau later; doomed-from-start episodes kept but flagged; leave-one-task-out
+evaluation. Next: scripts/06_train_predictor.py on the finished scans. See CLAUDE.md "Predictor decisions".
 
 - Pilot on the MacBook (Oct 2 to Oct 16) is done. Results are in results/LOG.md:
   natural success 28/30; replay fidelity PASS (max drift 2.61 mm after restoring the OSC controller

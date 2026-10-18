@@ -27,7 +27,7 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
   Successful episodes and recoverable failures (no `t_pnr`) are all 0.
 - Evaluation: binary classification over the WHOLE trajectory against these labels (not against
   the final failure label, not only the first 120 steps). Also report |predicted t_pnr - true t_pnr|
-  in steps and false alarms on successful runs. Test on held-out (unseen) tasks.
+  in steps and false alarms on successful runs. Test on held-out (unseen) tasks, leave-one-task-out.
 - The threshold that defines `t_pnr` is tau = 0.5 (see "Predictor decisions"). tau 0.3, tau 0.7
   and "fails every replay" are reported only as a sensitivity check from the 3 full scans.
 - Recovery comes after prediction works, and must happen BEFORE `t_pnr`. Prof. Zhu's idea: if the
@@ -38,13 +38,15 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
 
 ### Predictor decisions (Fahad, Oct 17, 2026)
 
-1. Labels by replay, RESCUE-compatible: K = 4 replays per checkpoint, K = 16 at the two
-   checkpoints around the boundary, success estimate = lower 0.25 quantile of
-   Beta(k + 1/2, K - k + 1/2) (Jeffreys), recoverable if estimate >= tau, tau = 0.5.
-   `t_pnr` is found by binary search over checkpoints (PREFAIL-style). Binary search assumes
-   success probability only goes down over time, so FIRST run 3 full scans (every checkpoint) to
-   confirm that before using it. Those 3 scans also give the sensitivity check (tau 0.3, tau 0.7,
-   "fails every replay").
+1. Labels by replay, RESCUE-compatible: K = 4 replays per checkpoint, success estimate = lower 0.25
+   quantile of Beta(k + 1/2, K - k + 1/2) (Jeffreys), recoverable if estimate >= tau, tau = 0.5.
+   UPDATE Oct 18 (Fahad): labels come from FULL scans (every checkpoint, every 8 steps), not binary
+   search, because the 3 test scans showed success probability does not only go down (t01_e41:
+   binary search 40 vs full scan 152). Full scans run on all natural failures and 20 successes
+   (2 per task). `t_pnr` = first checkpoint from which every later checkpoint is not recoverable.
+   Afterwards K = 16 is added at the two checkpoints around the tau 0.5 boundary, only where the
+   estimate there is close to tau. The 3 first scans also give the sensitivity check (tau 0.3,
+   tau 0.7, "fails every replay").
 2. Target: the replay risk score (1 - value) plus the 0/1 label (0 before `t_pnr`, 1 after).
    Loss = BCE on the label + MSE on the risk.
 3. Inputs: VLA hidden features (SAFE-style, last layer at the action tokens), the action chunk,
@@ -53,8 +55,13 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
    calibration on successes), |predicted t_pnr - true t_pnr| in steps, eta = predicted / true
    `t_pnr`, per-step AUROC over the whole run, and the number of late detections (after `t_pnr`).
 5. Baselines: timer (step count), SAFE-style probe (success/fail labels), steps-since-progress.
-6. Task-held-out split, fixed and written down BEFORE any training.
+6. Evaluation: leave-one-task-out over the 10 LIBERO-10 tasks (Fahad, Oct 18; replaces the single
+   fixed split): train on 9 tasks, test on the 10th, repeat for each task, report per task and pooled.
+   Tasks with no labelled failure still give false alarms on their successes.
 7. Labelling runs as Slurm array jobs (one array task per episode).
+8. Doomed-from-start episodes (`t_pnr` = 0: every replay fails, even from step 0) stay in training
+   (label 1 at every step) but are flagged, and excluded from the timing metrics
+   (|t_pnr error|, eta, timely recall, late detections). Per-step AUROC still includes them.
 
 Cite: RESCUE (arXiv 2610.13516), PREFAIL (arXiv 2607.16921), CheckVLA (arXiv 2607.26789).
 
@@ -96,8 +103,8 @@ step after `t_pnr` shrinks the time left to intervene: the ideal alarm sits righ
 
 ## PNR estimator (operational definition, always report the parameters)
 
-Pilot rule, still the code default in `03_pnr_scan.py` until the binary-search labeller is written
-(then the defaults change to the RESCUE-compatible setting below, approved by Fahad Oct 17).
+Pilot rule, still the code default in `03_pnr_scan.py`. Label jobs pass the RESCUE-compatible values
+below as flags (`slurm/scan_array.sbatch`); no binary-search labeller is written (dropped Oct 18).
 From a recorded failed episode, restore the sim state at checkpoints every `--every` policy steps
 (default 40, must be a multiple of the action chunk, 8). From each checkpoint run `K` replays
 (default 5) of the same policy with Gaussian action noise on the 6 arm dims
@@ -110,9 +117,11 @@ look doomed only because the clock runs out. Most LIBERO failures are timeouts, 
 PNR depends on noise level, K and extra_steps. It is an estimate, not ground truth. Say so on slides.
 
 RESCUE-compatible setting (used for all labels from now on, so numbers compare with RESCUE):
-tau = 0.5, K = 4 replays per checkpoint, K = 16 at the two checkpoints around the boundary,
-success estimate = lower 0.25 quantile of Beta(k + 1/2, K - k + 1/2) (Jeffreys), found by binary
-search (see "Predictor decisions"). tau 0.3, tau 0.7 and "fails every replay" are a sensitivity
+tau = 0.5, K = 4 replays per checkpoint (K = 16 later at the two checkpoints around the boundary
+where the estimate is close to tau), success estimate = lower 0.25 quantile of Beta(k + 1/2, K - k + 1/2)
+(Jeffreys), from FULL scans (every 8 steps; binary search was dropped Oct 18, see "Predictor
+decisions"). With K = 4, tau 0.5 means at least 3 of 4 replays succeed, so `03_pnr_scan.py
+--K 4 --min_fail 2` gives the same `t_pnr`. tau 0.3, tau 0.7 and "fails every replay" are a sensitivity
 check from the 3 full scans only. RESCUE's horizon is the LAST recoverable checkpoint; our `t_pnr`
 is the first checkpoint after it. Noise 0.05 and extra_steps 200 stay as above. Ask Fahad before
 any other change to the definition or defaults.
@@ -156,8 +165,11 @@ any other change to the definition or defaults.
 - `scripts/04_analyze.py`        table + figures; optional `--onsets` and `--alarms` CSVs.
 - `scripts/compare_episodes.py`  two recordings of one episode must be identical (gate after code changes).
 - `scripts/pick_failures.py`     fixed rule to pick natural failures from different tasks for scans.
+- `scripts/scan_targets.py`      fixed list of episodes to label by full scan (results/full_scans/targets.txt).
+- `scripts/check_monotonic.py`   full scan vs binary search t_pnr, sensitivity to tau.
+- `scripts/06_train_predictor.py` per-step predictor (logistic regression, small MLP), leave-one-task-out.
 - `slurm/*.sbatch`               jobs (L40S on galhp). `feature_check` = gate, `collect_array` = 10 tasks
-                                 x 50 init states, `scan_array` = full scans on 3 picked failures.
+                                 x 50 init states, `scan_array` = full scans on every line of targets.txt.
 - Episode files also hold `features` (n_queries, 56, 4096) float16 = last-layer LLM hidden states at
   the 56 action tokens (input of the action head), and `features_mean` (n_queries, 4096).
   `features[k]` belongs to `query_steps[k]` and produced `actions[8k : 8k+8]`.
