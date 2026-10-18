@@ -5,6 +5,12 @@ with Fahad. This file carries everything decided in the planning chat so far.
 
 ## 1. Where things stand
 
+UPDATE Oct 18 (details in results/LOG.md): Grid works (L40S on galhp, replay test PASS 0.99 mm).
+Episodes now save hidden features (gate: identical actions). 500 natural episodes collected in
+data/natural (28 failures, all timeouts, 7.3 GB). Full scans on 3 failures: binary search for t_pnr
+matches the full scan on 2 of 3; t01_e41 hovers near 50% success and breaks it (40 vs 152 at
+tau 0.5). Fahad decides next how to label (see results/full_scans/summary.md).
+
 - Pilot on the MacBook (Oct 2 to Oct 16) is done. Results are in results/LOG.md:
   natural success 28/30; replay fidelity PASS (max drift 2.61 mm after restoring the OSC controller
   and gripper counter); MPS slice bug fixed with `hidden.clone()`.
