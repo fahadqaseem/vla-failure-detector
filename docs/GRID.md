@@ -36,8 +36,11 @@ https://services.wayne.edu/TDClient/277/Portal/KB/ArticleDet?ID=20349)
   | `gmsap` | 4x H200 per node | msa1-msa4 (128 CPUs, 750 GB RAM) | `-p gmsap -q gpu --gres=gpu:nvidia_h200:1` |
   | `reqp` | mixed, preemptible (jobs get requeued) | many | `-p reqp -q requeue` |
 
-  STANDARD GPU: H200 on `gmsap` (decided Oct 17). On Oct 17 alh1-5 and msa1 were draining and
-  L40S jobs waited for alh6, while msa2-4 had free H200s. Check with
+  STANDARD GPU: L40S on `galhp` (decided Oct 18). BACKUP: H200 on `gmsap`. On Oct 17 the H200
+  queue was so full that Slurm estimated a start 5 days later, while L40S on alh6 started within
+  about 30 min. Before a big submit, compare with
+  `sbatch --test-only slurm/check.sbatch` and the same with `-p gmsap --gres=gpu:nvidia_h200:1`
+  (estimates only, submits nothing). Check nodes with
   `sinfo -p galhp,gmsap -N -o "%N %G %t"`. To change GPU type, edit the partition and gres lines
   in each sbatch, and say so in results/LOG.md (numbers can differ slightly between GPU types).
 - GPU driver 580.119.02 (CUDA 13.0) on alh6. The torch 2.2.0+cu121 wheel brings its own CUDA,
@@ -62,7 +65,8 @@ https://services.wayne.edu/TDClient/277/Portal/KB/ArticleDet?ID=20349)
 
 ## Jobs
 
-- Templates in `slurm/` use `gmsap`, QoS `gpu`, one H200. Output goes to `logs/` (git-ignored).
+- Templates in `slurm/` use `galhp`, QoS `gpu`, one L40S. Output goes to `logs/` (git-ignored).
+  Email on END and FAIL to hr4625@wayne.edu.
 - `sbatch slurm/check.sbatch` prints `nvidia-smi`, then runs `00_check_env.py` (about 3 min;
   model load about 100 s because 15 GB is read from home).
 - `ARGS="--tasks 0 --episodes 1" sbatch slurm/collect.sbatch` (default: 10 tasks x 3 episodes).
