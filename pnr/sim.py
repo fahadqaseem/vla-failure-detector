@@ -73,12 +73,20 @@ class Policy:
         (self.model, self.action_head, self.proprio_projector,
          self.noisy_action_projector, self.processor) = initialize_model(self.cfg)
         self.resize_size = get_image_resize_size(self.cfg)
-        if DEVICE.type == "mps":
-            # PyTorch MPS bug (torch 2.3.1, found Oct 16 2026): the action head gets a slice of the LLM hidden
-            # states (a view that starts partway into memory) and on MPS returns wrong actions for it, about half
-            # the right size. The same numbers as a fresh copy give the right answer. So hand it a copy.
-            head_predict = self.action_head.predict_action
-            self.action_head.predict_action = lambda hidden: head_predict(hidden.clone())
+        self.last_hidden = None  # (1, 56, 4096) last-layer LLM hidden states at the action tokens, last query
+        head_predict = self.action_head.predict_action
+
+        def predict_and_keep(hidden):
+            # The action head's input is exactly the feature we save (8 steps x 7 dims = 56 action tokens).
+            self.last_hidden = hidden.detach()
+            if DEVICE.type == "mps":
+                # PyTorch MPS bug (torch 2.3.1, found Oct 16 2026): the action head gets a slice of the LLM hidden
+                # states (a view that starts partway into memory) and on MPS returns wrong actions for it, about
+                # half the right size. The same numbers as a fresh copy give the right answer. So hand it a copy.
+                hidden = hidden.clone()
+            return head_predict(hidden)
+
+        self.action_head.predict_action = predict_and_keep
 
     def act(self, obs, task_description: str) -> list:
         observation, _ = prepare_observation(obs, self.resize_size)
@@ -89,6 +97,10 @@ class Policy:
             noisy_action_projector=self.noisy_action_projector,
             use_film=self.cfg.use_film,
         )
+
+    def last_features(self) -> np.ndarray:
+        """Hidden states from the last act() call as float32, shape (56, 4096)."""
+        return self.last_hidden[0].float().cpu().numpy()
 
 
 def make_task(task_id: int):
@@ -112,6 +124,7 @@ class Rollout:
     query_grippers: List[np.ndarray] = field(default_factory=list)  # gripper command counter at each query
     actions: List[np.ndarray] = field(default_factory=list)       # executed env actions, one per step
     eef: List[np.ndarray] = field(default_factory=list)           # end-effector position after each step
+    features: List[np.ndarray] = field(default_factory=list)      # (56, 4096) float16 hidden states at each query
     frames: List[np.ndarray] = field(default_factory=list)        # agentview frames (only if save_frames)
 
 
@@ -170,6 +183,8 @@ def rollout(env, policy: Policy, description: str, *, init_state=None, start_sta
                 out.query_states.append(env.get_sim_state().copy())
                 out.query_grippers.append(np.array(env.env.robots[0].gripper.current_action, dtype=np.float64))
             queue.extend(policy.act(obs, description))
+            if record_states:
+                out.features.append(policy.last_features().astype(np.float16))
         action = process_action(np.array(queue.popleft(), dtype=np.float64, copy=True), MODEL_FAMILY)
         if noise_std > 0:
             action[:6] = np.clip(action[:6] + rng.normal(0.0, noise_std, size=6), -1.0, 1.0)
@@ -199,4 +214,8 @@ def save_episode(path: str, r: Rollout, *, task_id: int, episode_idx: int, descr
         query_grippers=np.stack(r.query_grippers) if r.query_grippers else np.zeros((0, 2)),
         actions=np.stack(r.actions) if r.actions else np.zeros((0, 7)),
         eef=np.stack(r.eef) if r.eef else np.zeros((0, 3)),
+        # features[k] is the hidden state at query_steps[k]; it produced actions[8k : 8k+8].
+        features=np.stack(r.features) if r.features else np.zeros((0, 56, 4096), dtype=np.float16),
+        features_mean=(np.stack(r.features).astype(np.float32).mean(axis=1) if r.features
+                       else np.zeros((0, 4096), dtype=np.float32)),
     )

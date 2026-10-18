@@ -154,7 +154,13 @@ any other change to the definition or defaults.
 - `scripts/02_replay_test.py`    restore a checkpoint with no noise; must reproduce the episode.
 - `scripts/03_pnr_scan.py`       PNR scan over failed episodes.
 - `scripts/04_analyze.py`        table + figures; optional `--onsets` and `--alarms` CSVs.
-- `slurm/*.sbatch`               job templates (fill in partition and conda env).
+- `scripts/compare_episodes.py`  two recordings of one episode must be identical (gate after code changes).
+- `scripts/pick_failures.py`     fixed rule to pick natural failures from different tasks for scans.
+- `slurm/*.sbatch`               jobs (L40S on galhp). `feature_check` = gate, `collect_array` = 10 tasks
+                                 x 50 init states, `scan_array` = full scans on 3 picked failures.
+- Episode files also hold `features` (n_queries, 56, 4096) float16 = last-layer LLM hidden states at
+  the 56 action tokens (input of the action head), and `features_mean` (n_queries, 4096).
+  `features[k]` belongs to `query_steps[k]` and produced `actions[8k : 8k+8]`.
 - `tests/test_pnr.py`            unit tests for the PNR rule (run: `python -m pytest -q`).
 - `data/` rollouts and scans (git-ignored). `results/` tables and figures for meetings.
 

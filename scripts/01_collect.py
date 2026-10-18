@@ -50,5 +50,8 @@ with open(index_path, "a", newline="") as f:
                 imageio.mimsave(os.path.join(args.out, eid + ".mp4"), r.frames, fps=30)
             w.writerow([eid, task_id, ep, desc, int(r.success), r.t_end, args.noise_std, int(args.noise_std > 0)])
             f.flush()
-            print(f"{eid} | success={r.success} | steps={r.t_end} | {time.time() - t0:.0f}s | {desc}", flush=True)
+            feats = np.stack(r.features)
+            # float16 overflows above 65504 (becomes inf), so print the largest value as a check.
+            feat_info = f"features {feats.shape} max|x| {np.abs(feats.astype(np.float32)).max():.1f} finite {np.isfinite(feats).all()}"
+            print(f"{eid} | success={r.success} | steps={r.t_end} | {time.time() - t0:.0f}s | {feat_info} | {desc}", flush=True)
         env.close()
