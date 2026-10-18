@@ -12,7 +12,9 @@ human or detector, notices. We use the lab's shared terms (agreed in the Oct 2, 
 
 - `t_pnr`   point of no return: first time after which the episode almost surely fails.
 - `t_alarm` time a failure detector fires.
-- `t_onset` time a human can see the failure (human annotation, FailureSpot style).
+- `t_onset` time the failure becomes visible. Since Oct 18 (no human annotations this week) it comes
+  from an automatic detector, `scripts/07_auto_onset.py`: first missed grasp, drop, stuck or wrong-object
+  event in a failed episode. Events in successful episodes are counted as recovered slips.
 - Detection window    = `t_alarm - t_pnr`   (Fahad's focus: make this small).
 - Intervention window = `t_onset - t_pnr`.
 
@@ -77,15 +79,15 @@ two natural failures recoverable. The Oct 2 numbers (alarm about 90 steps after 
 45 after alarm) are still guesses.
 
 Independence: Fahad builds his own data, labels and models on Grid. Do not read, copy or depend on
-Sai's code or data. Sai is a collaborator Fahad talks to, not a dependency. The only external labels
-used are the episode annotations Fahad made himself.
+Sai's code or data. Sai is a collaborator Fahad talks to, not a dependency. All labels come from
+Fahad's own replay scans and automatic onset detector (no human annotations this week, Oct 18).
 
 ## Plan of work (details and dates in docs/PLAN.md)
 
 1. Move the pipeline to WSU Grid (docs/GRID.md).
 2. Collect episodes with per-step hidden features saved, plus sim states at chunk boundaries.
 3. Label `t_pnr` by replay on 30 to 50 failures plus successful runs (RESCUE-compatible settings).
-4. Use Fahad's own human annotations as a second label source; compare them with replay labels.
+4. Automatic `t_onset` from sim-state events (07_auto_onset.py); intervention window = `t_onset - t_pnr`.
 5. Train the per-step predictor; evaluate on unseen tasks against timer and SAFE-style baselines.
 6. Later: decision value (RESCUE break-even false alarm rate) and recovery by rollback.
 
@@ -170,6 +172,8 @@ any other change to the definition or defaults.
 - `scripts/02_replay_test.py`    restore a checkpoint with no noise; must reproduce the episode.
 - `scripts/03_pnr_scan.py`       PNR scan over failed episodes.
 - `scripts/04_analyze.py`        table + figures; optional `--onsets` and `--alarms` CSVs.
+- `scripts/07_auto_onset.py`     automatic t_onset from saved sim states (CPU); results/auto_onset.csv.
+- `scripts/07_figures.py`        t_pnr distribution and predicted vs replay risk plots.
 - `scripts/compare_episodes.py`  two recordings of one episode must be identical (gate after code changes).
 - `scripts/pick_failures.py`     fixed rule to pick natural failures from different tasks for scans.
 - `scripts/scan_targets.py`      fixed list of episodes to label by full scan (results/full_scans/targets.txt).

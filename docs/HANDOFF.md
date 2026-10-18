@@ -70,7 +70,8 @@ Step D. Checks on a GPU node, in order, each logged in results/LOG.md:
    (tau 0.5; K 4, 16 at the two checkpoints around the boundary; Jeffreys lower 0.25 quantile;
    binary search; tau 0.3 / 0.7 only as a sensitivity check from 3 full scans; see CLAUDE.md).
    Ask Fahad before changing code defaults.
-4. Load Fahad's own episode annotations (he will provide the file) and compare with replay t_pnr.
+4. Automatic t_onset from sim states (scripts/07_auto_onset.py, no human annotations this week);
+   intervention window t_onset - t_pnr per failure.
 5. New script 06_train_predictor.py: per-step logistic regression, then a small MLP. Labels 0 before
    t_pnr, 1 after; successes all 0. Task-held-out split fixed BEFORE training.
 6. Evaluate over the whole trajectory: per-step AUROC, |predicted t_pnr - true t_pnr| in steps,
