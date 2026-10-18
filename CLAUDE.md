@@ -54,7 +54,14 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
 4. Metrics: timely recall at 5% false alarms on successful runs (threshold set by conformal
    calibration on successes), |predicted t_pnr - true t_pnr| in steps, eta = predicted / true
    `t_pnr`, per-step AUROC over the whole run, and the number of late detections (after `t_pnr`).
-5. Baselines: timer (step count), SAFE-style probe (success/fail labels), steps-since-progress.
+   Timely = alarm at or before `t_pnr` (RESCUE-style), always reported together with the 5% false-alarm
+   limit on successes. Also report lead time = `t_pnr` - alarm step for every failure (Fahad, Oct 18).
+   Training uses ALL natural successes (label 0, MSE masked where not scanned), each episode weighted
+   equally and positives/negatives balanced. The threshold is calibrated on all successes of the
+   training tasks (cross-fitted scores, so each comes from a model that did not see that task);
+   false alarms are counted on all successes of the held-out task. AUROC from scikit-learn.
+5. Baselines: timer (step count), SAFE-style probe (success/fail labels), steps-since-progress
+   (RESCUE: chunk boundaries since the eef last moved more than 0.01 m between successive boundaries).
 6. Evaluation: leave-one-task-out over the 10 LIBERO-10 tasks (Fahad, Oct 18; replaces the single
    fixed split): train on 9 tasks, test on the 10th, repeat for each task, report per task and pooled.
    Tasks with no labelled failure still give false alarms on their successes.

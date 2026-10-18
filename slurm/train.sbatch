@@ -4,7 +4,7 @@
 #SBATCH --qos=primary
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
-#SBATCH --time=04:00:00
+#SBATCH --time=08:00:00
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=hr4625@wayne.edu
