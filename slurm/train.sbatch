@@ -13,3 +13,4 @@ source slurm/common.sh
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 python scripts/06_train_predictor.py --scans "data/full_scans/*.json" --episodes "data/natural/*/*.npz" \
     --out results/predictor ${ARGS:-}
+python scripts/07_figures.py --scans "data/full_scans/*.json" --pred results/predictor --out results/predictor

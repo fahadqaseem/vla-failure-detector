@@ -255,4 +255,8 @@ text = "\n".join(lines) + "\n"
 open(os.path.join(args.out, "summary.md"), "w").write(text)
 with open(os.path.join(args.out, "per_episode.json"), "w") as f:
     json.dump([{k: v for k, v in r.items() if k not in ("labels", "scores")} for r in rows_out], f, indent=1)
+# Per-step scores of the held-out failures (for figures), with their query steps.
+steps_by_eid = {e["eid"]: e["steps"].tolist() for e in episodes}
+with open(os.path.join(args.out, "failure_scores.json"), "w") as f:
+    json.dump([dict(r, steps=steps_by_eid[r["eid"]]) for r in rows_out if not r["success"]], f)
 print(text)
