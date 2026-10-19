@@ -30,6 +30,13 @@ Models (same inputs, standardised with the training rows):
             counter, goal object minus target and minus eef, goal predicates true now). Shows how far the
             labels can be predicted when the state is known exactly.
 
+Two options for unseen tasks (Fahad, Oct 19; both change the inputs of every model that reads features):
+  --task_embed FILE    task conditioning: append the task's instruction embedding (scripts/11_task_embedding.py,
+                       mean of the VLA's last-layer hidden states over the instruction tokens, 4096) to the inputs.
+  --task_norm_steps N  per-task normalisation: standardise features_mean with the mean and std of that task's
+                       successful runs over their first N steps (queries at step < N). No labels needed, so the
+                       held-out task can use its own successes; every training task uses its own.
+
 Leave-one-task-out: for each task, train on the other 9 and test on it.
 --split episode (diagnostic, Fahad Oct 19, "seen tasks"): instead hold out episodes, 5 folds by
 initial-state index (episode_idx % 5) within every task, so every task is seen in training.
@@ -83,6 +90,9 @@ p.add_argument("--split", choices=["task", "episode"], default="task",
 p.add_argument("--folds", type=int, default=5)
 p.add_argument("--privileged", default=None, help="dir of 10_privileged_features.py outputs: adds the privileged model")
 p.add_argument("--models", nargs="+", default=None, help="subset of models to run (default: all)")
+p.add_argument("--task_embed", default=None, help="npz from 11_task_embedding.py: append the task embedding to the inputs")
+p.add_argument("--task_norm_steps", type=int, default=0,
+               help="if > 0: standardise features_mean per task with its successes' queries at step < this")
 p.add_argument("--out", default="results/predictor")
 args = p.parse_args()
 
@@ -137,8 +147,25 @@ if args.prechecks:
         if pc["verdict"] == "recoverable (pre-check)":
             precheck_recoverable.add(pc["episode_id"])
 
+files = sorted(f for pat in args.episodes for f in glob.glob(pat))
+task_norm = {}  # task -> (mean, std) of features_mean over the first task_norm_steps of its successful runs
+if args.task_norm_steps > 0:
+    early = {}
+    for f in files:
+        ep = np.load(f, allow_pickle=True)
+        if bool(ep["success"]) and not bool(ep["induced"]):
+            early.setdefault(int(ep["task_id"]), []).append(
+                ep["features_mean"][ep["query_steps"] < args.task_norm_steps].astype(np.float32))
+    for t, rows in early.items():
+        X = np.concatenate(rows)
+        task_norm[t] = (X.mean(0), X.std(0) + 1e-6)
+task_embed = None
+if args.task_embed:
+    te = np.load(args.task_embed)
+    task_embed = dict(zip(te["task_ids"].tolist(), te["emb"]))
+
 episodes = []  # one dict per episode
-for f in sorted(f for pat in args.episodes for f in glob.glob(pat)):
+for f in files:
     ep = np.load(f, allow_pickle=True)
     if bool(ep["induced"]):
         continue
@@ -148,9 +175,15 @@ for f in sorted(f for pat in args.episodes for f in glob.glob(pat)):
     actions = ep["actions"]
     chunks = np.stack([actions[s:s + 8].reshape(-1) if s + 8 <= len(actions)
                        else np.pad(actions[s:], ((0, s + 8 - len(actions)), (0, 0))).reshape(-1) for s in q])
-    x = np.concatenate([ep["features_mean"], chunks, ep["eef"][q], ep["query_grippers"]], axis=1).astype(np.float32)
+    feats = ep["features_mean"].astype(np.float32)
+    if task_norm:
+        mu_t, sd_t = task_norm[int(ep["task_id"])]
+        feats = (feats - mu_t) / sd_t
+    x = np.concatenate([feats, chunks, ep["eef"][q], ep["query_grippers"]], axis=1).astype(np.float32)
+    if task_embed is not None:
+        x = np.concatenate([x, np.tile(task_embed[int(ep["task_id"])], (len(q), 1))], axis=1)
     progress = steps_since_progress(ep["eef"][q])
-    x_comb = np.concatenate([x, motion_and_window(ep["eef"][q], progress, ep["features_mean"], chunks)], axis=1)
+    x_comb = np.concatenate([x, motion_and_window(ep["eef"][q], progress, feats, chunks)], axis=1)
     x_priv = np.load(os.path.join(args.privileged, eid + ".npz"))["x"] if args.privileged else None
     t_pnr = t_pnr_from_scan(scan) if scan else None
     pre_rec = eid in precheck_recoverable and not success and not scan  # label 0 everywhere, no risk target
@@ -306,7 +339,10 @@ lines = ["# Per-step t_pnr predictor, " + ("leave-one-task-out" if args.split ==
          f"{sum(e['doomed'] for e in episodes)}. Training and test use all natural successes. "
          f"Threshold: conformal, alpha {args.alpha}, from cross-fitted scores of all training-task successes. "
          f"epochs {args.epochs}, lr {args.lr}, weight decay {args.weight_decay}, hidden {args.hidden}, seed {args.seed}, "
-         f"progress {args.progress_m} m.",
+         f"progress {args.progress_m} m."
+         + (f" Task embedding appended: {args.task_embed}." if args.task_embed else "")
+         + (f" Per-task normalisation of features_mean: first {args.task_norm_steps} steps of each task's successes."
+            if args.task_norm_steps else ""),
          "", "Timely = alarm at or before t_pnr; late = after; lead = t_pnr - t_alarm (positive = early); "
          "|err| = mean |t_alarm - t_pnr|; all over alarmed failures with t_pnr > 0. "
          f"Time-matched AUROC: label-1 steps vs success steps in the same {args.bin}-step bin only. "

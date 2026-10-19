@@ -101,7 +101,8 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
   (every 8 steps, K 4, tau 0.5) as an array job (`slurm/perturbed_submit_scans.sbatch` writes
   `results/perturbed_scans/targets.txt` and submits `scan_array.sbatch`, output `data/perturbed_scans/`).
 - The replay gate (`02_replay_test.py --full`) runs on the first perturbed episode of each task, at query 1
-  and the middle query, before its pre-checks. `slurm/replay_gate.sbatch` tests any list of episode:query pairs.
+  and the middle query, in the collection job. Pre-checks are a separate array (`slurm/precheck_perturbed.sbatch`)
+  that runs after the natural rescan (Fahad, Oct 19: collection alongside the rescan, pre-checks and scans after). `slurm/replay_gate.sbatch` tests any list of episode:query pairs.
 
 Cite: RESCUE (arXiv 2610.13516), PREFAIL (arXiv 2607.16921), CheckVLA (arXiv 2607.26789).
 
@@ -220,6 +221,7 @@ any other change to the definition or defaults.
 - `pnr/perturb.py`     perturbed initial states (object shift 2-3 cm, yaw up to 15 deg) and validity checks.
 - `scripts/09_precheck.py`       4 replays at 75% of a new failure: recoverable (pre-check) or scan.
 - `scripts/10_privileged_features.py` simulator poses per query (diagnostic privileged predictor), data/privileged.
+- `scripts/11_task_embedding.py` task instruction embedding (VLA last layer, instruction tokens, text only) for `--task_embed`.
 - `scripts/compare_labels.py`    old vs new t_pnr for the same episodes.
 - `scripts/compare_episodes.py`  two recordings of one episode must be identical (gate after code changes).
 - `scripts/pick_failures.py`     fixed rule to pick natural failures from different tasks for scans.
