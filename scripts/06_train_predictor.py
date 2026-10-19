@@ -25,14 +25,21 @@ Models (same inputs, standardised with the training rows):
             window of the last 4 queries as averaged deltas (features_mean and action chunk minus their mean
             over the 3 previous queries; zero at the first query). Still no step index.
 
+  privileged diagnostic (Fahad, Oct 19; only with --privileged): same MLP and loss, but the inputs are
+            simulator poses instead of VLA features (scripts/10_privileged_features.py: eef, fingers, gripper
+            counter, goal object minus target and minus eef, goal predicates true now). Shows how far the
+            labels can be predicted when the state is known exactly.
+
 Leave-one-task-out: for each task, train on the other 9 and test on it.
+--split episode (diagnostic, Fahad Oct 19, "seen tasks"): instead hold out episodes, 5 folds by
+initial-state index (episode_idx % 5) within every task, so every task is seen in training.
 Conformal threshold from ALL successes of the 9 training tasks. Their scores must come from a model that
 did not see their task (as at test time), so they are cross-fitted: for each training task u, a model
 trained on the other 8 tasks scores u's successes. Threshold = the ceil((n+1)(1-alpha))-th smallest
 per-run max score over the n calibration runs. Alarm = first query step whose score is above it.
 False alarms are measured on ALL successes of the held-out task.
 
-Metrics (pooled over the 10 held-out tasks):
+Metrics (pooled over the held-out groups: 10 tasks, or 5 episode folds):
   AUROC per step over the whole run (sklearn); time-matched AUROC: positive steps (label 1) are compared
   only with steps of successful runs in the same 64-step time bin (pairs from different bins are not
   counted; bins without both are skipped), so knowing how long the run has lasted helps much less;
@@ -71,6 +78,11 @@ p.add_argument("--lr", type=float, default=1e-3)
 p.add_argument("--weight_decay", type=float, default=1e-3)
 p.add_argument("--hidden", type=int, default=256)
 p.add_argument("--seed", type=int, default=0)
+p.add_argument("--split", choices=["task", "episode"], default="task",
+               help="task = leave-one-task-out; episode = 5 folds by episode_idx %% 5 within each task (seen tasks)")
+p.add_argument("--folds", type=int, default=5)
+p.add_argument("--privileged", default=None, help="dir of 10_privileged_features.py outputs: adds the privileged model")
+p.add_argument("--models", nargs="+", default=None, help="subset of models to run (default: all)")
 p.add_argument("--out", default="results/predictor")
 args = p.parse_args()
 
@@ -139,6 +151,7 @@ for f in sorted(f for pat in args.episodes for f in glob.glob(pat)):
     x = np.concatenate([ep["features_mean"], chunks, ep["eef"][q], ep["query_grippers"]], axis=1).astype(np.float32)
     progress = steps_since_progress(ep["eef"][q])
     x_comb = np.concatenate([x, motion_and_window(ep["eef"][q], progress, ep["features_mean"], chunks)], axis=1)
+    x_priv = np.load(os.path.join(args.privileged, eid + ".npz"))["x"] if args.privileged else None
     t_pnr = t_pnr_from_scan(scan) if scan else None
     pre_rec = eid in precheck_recoverable and not success and not scan  # label 0 everywhere, no risk target
     label = np.zeros(len(q), np.float32) if t_pnr is None else (q >= t_pnr).astype(np.float32)
@@ -146,9 +159,10 @@ for f in sorted(f for pat in args.episodes for f in glob.glob(pat)):
     if scan:
         by_step = {c: 1 - sum(s) / len(s) for c, s in zip(scan["checkpoints"], scan["successes"])}
         risk = np.array([by_step.get(int(s), np.nan) for s in q], np.float32)
-    episodes.append(dict(eid=eid, task=int(ep["task_id"]), success=success, scanned=scan is not None or pre_rec,
+    group = int(ep["task_id"]) if args.split == "task" else int(ep["episode_idx"]) % args.folds
+    episodes.append(dict(eid=eid, task=int(ep["task_id"]), group=group, success=success, scanned=scan is not None or pre_rec,
                          source="perturbed" if "perturbed" in ep.files else "natural",
-                         t_pnr=t_pnr, doomed=t_pnr == 0, steps=q, x=x, x_comb=x_comb, label=label, risk=risk,
+                         t_pnr=t_pnr, doomed=t_pnr == 0, steps=q, x=x, x_comb=x_comb, x_priv=x_priv, label=label, risk=risk,
                          progress=progress))
 
 labelled = [e for e in episodes if e["scanned"] or e["success"]]
@@ -168,7 +182,7 @@ print(f"{len(episodes)} natural episodes; labelled: {len(labelled)} "
 def train(rows, model_name):
     """rows: list of episodes. Returns a function: episode -> per-step score."""
     torch.manual_seed(args.seed)
-    key = "x_comb" if model_name == "combined" else "x"
+    key = {"combined": "x_comb", "privileged": "x_priv"}.get(model_name, "x")
     X = np.concatenate([e[key] for e in rows])
     mu, sd = X.mean(0), X.std(0) + 1e-6
     X = torch.tensor((X - mu) / sd)
@@ -186,7 +200,7 @@ def train(rows, model_name):
     has_risk = ~torch.isnan(r)
     d = X.shape[1]
     net = (torch.nn.Sequential(torch.nn.Linear(d, args.hidden), torch.nn.ReLU(), torch.nn.Linear(args.hidden, 1))
-           if model_name in ("mlp", "combined") else torch.nn.Linear(d, 1))
+           if model_name in ("mlp", "combined", "privileged") else torch.nn.Linear(d, 1))
     opt = torch.optim.Adam(net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     for _ in range(args.epochs):  # full batch
         logit = net(X).squeeze(1)
@@ -227,28 +241,29 @@ def first_alarm(e, s, thr):
     return int(e["steps"][above[0]]) if len(above) else None
 
 
-# ---- leave-one-task-out ----
-models = ["timer", "progress", "safe", "logreg", "mlp", "combined"]
+# ---- leave-one-group-out: group = task (default), or episode fold (--split episode) ----
+models = ["timer", "progress", "safe", "logreg", "mlp", "combined"] + (["privileged"] if args.privileged else [])
+models = [m for m in models if args.models is None or m in args.models]
 rows_out = []  # one row per (model, held-out episode)
-tasks = sorted({e["task"] for e in episodes})
-for test_task in tasks:
-    train_tasks = [t for t in tasks if t != test_task]
-    train_eps = [e for e in episodes if e["task"] != test_task]
-    test = [e for e in labelled if e["task"] == test_task]
+groups = sorted({e["group"] for e in episodes})
+for test_group in groups:
+    train_groups = [t for t in groups if t != test_group]
+    train_eps = [e for e in episodes if e["group"] != test_group]
+    test = [e for e in labelled if e["group"] == test_group]
     for m in models:
-        # Calibration scores for each training task's successes, from a model that did not see that task.
+        # Calibration scores for each training group's successes, from a model that did not see that group.
         calib_maxes = []
-        for u in train_tasks:
-            score_u = fit(m, [e for e in train_eps if e["task"] != u])
-            calib_maxes += [score_u(e).max() for e in train_eps if e["task"] == u and e["success"]]
+        for u in train_groups:
+            score_u = fit(m, [e for e in train_eps if e["group"] != u])
+            calib_maxes += [score_u(e).max() for e in train_eps if e["group"] == u and e["success"]]
         thr = conformal_threshold(calib_maxes)
         score = fit(m, train_eps)
         for e in test:
             s = score(e)
-            rows_out.append(dict(model=m, task=test_task, eid=e["eid"], success=e["success"], t_pnr=e["t_pnr"],
+            rows_out.append(dict(model=m, task=e["task"], group=test_group, eid=e["eid"], success=e["success"], t_pnr=e["t_pnr"],
                                  doomed=e["doomed"], t_alarm=first_alarm(e, s, thr), threshold=thr,
                                  labels=e["label"].tolist(), scores=s.tolist(), steps=e["steps"].tolist()))
-    print(f"held-out task {test_task}: {len(train_eps)} training episodes, {len(test)} test episodes", flush=True)
+    print(f"held-out {args.split} group {test_group}: {len(train_eps)} training episodes, {len(test)} test episodes", flush=True)
 
 
 # ---- metrics ----
@@ -284,7 +299,8 @@ def summarise(rows):
 
 
 os.makedirs(args.out, exist_ok=True)
-lines = ["# Per-step t_pnr predictor, leave-one-task-out", "",
+lines = ["# Per-step t_pnr predictor, " + ("leave-one-task-out" if args.split == "task" else
+         f"SEEN TASKS: {args.folds} folds by episode_idx % {args.folds} within each task (diagnostic)"), "",
          f"Labels: full replay scans, K 4, tau 0.5 (>= {args.tau_min_success} of 4 succeed = recoverable). "
          f"Scanned failures: {n_fail_lab}; doomed from start (t_pnr 0, left out of timing): "
          f"{sum(e['doomed'] for e in episodes)}. Training and test use all natural successes. "

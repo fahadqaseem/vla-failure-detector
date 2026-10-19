@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np  # noqa: E402
 
 from pnr.pnr import find_pnr  # noqa: E402
-from pnr.sim import CHUNK, Policy, make_task, max_steps, rollout  # noqa: E402
+from pnr.sim import CHUNK, DETERMINISTIC, REPLAY_START, Policy, make_task, max_steps, rollout  # noqa: E402
 
 p = argparse.ArgumentParser()
 p.add_argument("--episodes", default="data/rollouts/*.npz", help="glob of recorded episodes")
@@ -128,7 +128,8 @@ for f, ep in todo:
         "end_steps": [end_steps[c] for c in scanned],
         "params": {"every": args.every, "K": args.K, "min_fail": args.min_fail,
                    "noise_std": args.noise_std, "seed": args.seed, "full_curve": args.full_curve,
-                   "extra_steps": args.extra_steps, "t_min": args.t_min, "t_max": args.t_max},
+                   "extra_steps": args.extra_steps, "t_min": args.t_min, "t_max": args.t_max,
+                   "replay_start": REPLAY_START, "deterministic": DETERMINISTIC},
         "minutes": round((time.time() - t_start) / 60, 1),
     }
     # Write to a temporary file and rename, so a job killed mid-write never leaves a half-written result.

@@ -21,7 +21,7 @@ p.add_argument("--episode", required=True)
 p.add_argument("--query", type=int, default=-1, help="which recorded query to restore (default: middle)")
 p.add_argument("--steps", type=int, default=80)
 p.add_argument("--full", action="store_true", help="also replay to the end and compare outcome")
-p.add_argument("--tol_m", type=float, default=0.005, help="max allowed eef deviation in metres")
+p.add_argument("--tol_m", type=float, default=0.010, help="max allowed eef deviation in metres (10 mm over 80 steps, Fahad Oct 19)")
 args = p.parse_args()
 
 ep = np.load(args.episode, allow_pickle=True)

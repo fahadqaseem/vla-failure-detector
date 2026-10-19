@@ -6,6 +6,7 @@ conda activate openvla-oft
 export OFT_ROOT="$HOME/openvla-oft"
 export MUJOCO_GL=egl
 export PYOPENGL_PLATFORM=egl
+export CUBLAS_WORKSPACE_CONFIG=:4096:8   # deterministic cuBLAS (pnr/sim.py, Fahad Oct 19)
 export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"   # home; quota not yet confirmed (checkpoint ~15 GB)
 cd "$SLURM_SUBMIT_DIR"
 mkdir -p logs

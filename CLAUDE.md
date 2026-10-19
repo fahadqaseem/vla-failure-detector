@@ -68,11 +68,15 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
    4 chunks, steps-since-progress and averaged deltas over the last 4 queries; no step index.
    Headline columns: unnecessary alarms on recoverable failures, and a time-matched AUROC (label-1 steps
    vs success steps in the same 64-step bin only), next to the whole-run AUROC.
-6. Evaluation: leave-one-task-out over the 10 LIBERO-10 tasks (Fahad, Oct 18; replaces the single
+6. Diagnostics (Fahad, Oct 19), never the headline: `--split episode` = seen tasks (5 folds by
+   episode_idx % 5 within each task); `--privileged` = same MLP on simulator poses
+   (`10_privileged_features.py`) instead of VLA features. They show whether the gap is unseen tasks or
+   the VLA features themselves.
+7. Evaluation: leave-one-task-out over the 10 LIBERO-10 tasks (Fahad, Oct 18; replaces the single
    fixed split): train on 9 tasks, test on the 10th, repeat for each task, report per task and pooled.
    Tasks with no labelled failure still give false alarms on their successes.
-7. Labelling runs as Slurm array jobs (one array task per episode).
-8. Doomed-from-start episodes (`t_pnr` = 0: every replay fails, even from step 0) stay in training
+8. Labelling runs as Slurm array jobs (one array task per episode).
+9. Doomed-from-start episodes (`t_pnr` = 0: every replay fails, even from step 0) stay in training
    (label 1 at every step) but are flagged, and excluded from the timing metrics
    (|t_pnr error|, eta, timely recall, late detections). Per-step AUROC still includes them.
 
@@ -173,7 +177,15 @@ any other change to the definition or defaults.
 - Replays start with `pnr.sim.restore_query` (Oct 19 2026), never `restore()` alone: robosuite samples
   observations at the first physics substep of each env.step, so the obs from a plain restore is 1 step
   "too new" and the replay drifts up to 13 mm. restore_query restores the query before and replays its
-  8 recorded actions. The 48 natural full scans of Oct 18 were made before this fix.
+  8 recorded actions. The 48 natural full scans of Oct 18 were made before this fix; they are kept in
+  `data/full_scans_oct18_restore/` for comparison and rescanned with the fix into `data/full_scans/`
+  (Fahad, Oct 19; `scripts/compare_labels.py` counts changed t_pnr values).
+- Deterministic GPU kernels are on by default (`pnr/sim.py`, Fahad Oct 19): torch.use_deterministic_algorithms,
+  cudnn deterministic, CUBLAS_WORKSPACE_CONFIG=:4096:8 (`PNR_DETERMINISTIC=0` turns them off). Scan and
+  pre-check results store `replay_start` and `deterministic` in their params.
+- Replay gate tolerance (Fahad, Oct 19): eef drift up to 10 mm over 80 steps is accepted if the full replay
+  has the same outcome. Remaining drift after the fix is physics at the 1e-6 to 1e-5 level, amplified only
+  where the policy is close to a gripper decision (results/LOG.md, Oct 19).
 - Images are rotated 180 degrees before the policy (`get_libero_image`). Use the repo helpers,
   never re-implement preprocessing.
 - Sim state: `env.get_sim_state()` / `env.reset(); env.set_init_state(state)` (LIBERO ControlEnv).
@@ -207,13 +219,16 @@ any other change to the definition or defaults.
 - `scripts/07_figures.py`        t_pnr distribution and predicted vs replay risk plots.
 - `pnr/perturb.py`     perturbed initial states (object shift 2-3 cm, yaw up to 15 deg) and validity checks.
 - `scripts/09_precheck.py`       4 replays at 75% of a new failure: recoverable (pre-check) or scan.
+- `scripts/10_privileged_features.py` simulator poses per query (diagnostic privileged predictor), data/privileged.
+- `scripts/compare_labels.py`    old vs new t_pnr for the same episodes.
 - `scripts/compare_episodes.py`  two recordings of one episode must be identical (gate after code changes).
 - `scripts/pick_failures.py`     fixed rule to pick natural failures from different tasks for scans.
 - `scripts/scan_targets.py`      fixed list of episodes to label by full scan (results/full_scans/targets.txt).
 - `scripts/check_monotonic.py`   full scan vs binary search t_pnr, sensitivity to tau.
 - `scripts/06_train_predictor.py` per-step predictor (logistic regression, small MLP), leave-one-task-out.
 - `slurm/*.sbatch`               jobs (L40S on galhp). `feature_check` = gate, `collect_array` = 10 tasks
-                                 x 50 init states, `scan_array` = full scans on every line of targets.txt.
+                                 x 50 init states, `scan_array` = full scans on every line of targets.txt,
+                                 `replay_gate` = 02_replay_test on episode:query pairs, `after_rescan` = reruns.
 - Episode files also hold `features` (n_queries, 56, 4096) float16 = last-layer LLM hidden states at
   the 56 action tokens (input of the action head), and `features_mean` (n_queries, 4096).
   `features[k]` belongs to `query_steps[k]` and produced `actions[8k : 8k+8]`.

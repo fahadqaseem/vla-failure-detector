@@ -7,13 +7,14 @@
 #SBATCH --output=logs/%x-%j.out
 # Runs after the perturbed collection array (afterany): writes the scan list (failures whose pre-check
 # says "scan") and submits the full-scan array on it, one array task per line, at most 4 at once.
-# Then submits the predictor rerun with the new labels (train_with_perturbed.sbatch) after that array.
+# Then submits the predictor rerun with the new labels (train_with_perturbed.sbatch) after that array,
+# and also after job $AFTER if set (the natural rescan array, so natural labels are final first).
 source slurm/common.sh
 python scripts/scan_targets.py --root data/perturbed --n_success 0 --prechecks data/perturbed/prechecks \
     --out results/perturbed_scans/targets.txt
 N=$(grep -c . results/perturbed_scans/targets.txt)
-if [ "$N" -eq 0 ]; then echo "nothing to scan"; sbatch slurm/train_with_perturbed.sbatch; exit 0; fi
+if [ "$N" -eq 0 ]; then echo "nothing to scan"; sbatch ${AFTER:+--dependency=afterany:$AFTER} slurm/train_with_perturbed.sbatch; exit 0; fi
 SCAN=$(sbatch --parsable --array=0-$((N - 1))%4 \
     --export=ALL,TARGETS=results/perturbed_scans/targets.txt,OUT=data/perturbed_scans slurm/scan_array.sbatch)
 echo "scan array $SCAN ($N targets)"
-sbatch --dependency=afterany:$SCAN slurm/train_with_perturbed.sbatch
+sbatch --dependency=afterany:$SCAN${AFTER:+,afterany:$AFTER} slurm/train_with_perturbed.sbatch

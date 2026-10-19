@@ -53,6 +53,16 @@ if not torch.cuda.is_available():
 
     torch.load = _load_to_cpu
 
+# Deterministic GPU kernels (Fahad, Oct 19 2026). Default on; PNR_DETERMINISTIC=0 turns it off.
+# CUBLAS_WORKSPACE_CONFIG must be set before cuBLAS starts, i.e. before the model is loaded.
+DETERMINISTIC = os.environ.get("PNR_DETERMINISTIC", "1") == "1"
+if DETERMINISTIC and torch.cuda.is_available():
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+    torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+REPLAY_START = "restore_query"  # how replays start (see restore_query); stored with every scan result
+
 SUITE = "libero_10"
 CHUNK = 8
 WAIT_STEPS = 10

@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np  # noqa: E402
 
-from pnr.sim import Policy, make_task, max_steps, rollout  # noqa: E402
+from pnr.sim import DETERMINISTIC, REPLAY_START, Policy, make_task, max_steps, rollout  # noqa: E402
 
 p = argparse.ArgumentParser()
 p.add_argument("--episodes", required=True)
@@ -61,7 +61,8 @@ for eid, ep in todo:
     verdict = "recoverable (pre-check)" if sum(successes) >= args.min_success else "scan"
     record = {"episode_id": eid, "task_id": int(ep["task_id"]), "episode_idx": int(ep["episode_idx"]),
               "t_end": int(ep["t_end"]), "checkpoint": c, "successes": successes, "verdict": verdict,
-              "params": {k: getattr(args, k) for k in ["back", "K", "min_success", "noise_std", "extra_steps", "seed"]},
+              "params": {**{k: getattr(args, k) for k in ["back", "K", "min_success", "noise_std", "extra_steps", "seed"]},
+                         "replay_start": REPLAY_START, "deterministic": DETERMINISTIC},
               "minutes": round((time.time() - t_start) / 60, 1)}
     path = os.path.join(args.out, eid + ".json")
     with open(path + ".tmp", "w") as fh:
