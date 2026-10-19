@@ -78,9 +78,11 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
   LIBERO-10 task and each initial state 0 to 49, move every movable object (`objects_dict`, not fixtures)
   by a random 2 to 3 cm in a random direction in x, y and rotate it about the vertical axis by up to
   15 degrees. Seeded per (seed, task, init index, attempt). No action noise, features saved.
-- Invalid start = an overlap of more than 5 mm right after the move, or an object that moves more than
-  1 cm or tilts more than 10 degrees during the 10 settling steps, or a task already solved. Then a new
-  attempt is drawn; after 20 invalid attempts that initial state is skipped.
+- Invalid start, judged after the 10 settling steps against the UNPERTURBED start after the same steps
+  (LIBERO starts hold objects a few cm above the table and some overlap slightly, so absolute checks reject
+  every start): some object more than 1 cm (x, y or z) from its unperturbed settled place plus its shift,
+  or tilted more than 10 degrees from its unperturbed settled orientation (yaw ignored), or the task
+  already solved. Then a new attempt is drawn; after 20 invalid attempts that initial state is skipped.
 - Episodes go to `data/perturbed/taskXX/`, ids `tXX_eYY_p0`, labelled "perturbed-natural" (field
   `perturbed`, with `perturbation` and `base_init_state`). Never pooled with the original 500 natural
   episodes in a statistic without saying so.

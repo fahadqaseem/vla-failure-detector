@@ -4,11 +4,14 @@ Start from one of the 50 fixed LIBERO initial states and move every movable obje
 have a free joint in LIBERO-10, fixtures such as the stove or cabinet are not moved):
   shift in x, y by a random distance of 2 to 3 cm in a random direction, and
   rotate about the vertical axis by a random angle of up to 15 degrees.
-The draw is seeded (seed, task, init index, attempt). A start is invalid, and a new attempt is drawn, if
-  1. two bodies overlap by more than 5 mm right after the move (penetration),
-  2. during the 10 settling no-op steps of the eval any object moves more than 1 cm or tilts more than
-     10 degrees (it fell, toppled or was pushed), or
-  3. the task is already solved after settling.
+The draw is seeded (seed, task, init index, attempt). LIBERO initial states hold objects a few cm above
+the table (they fall during the 10 no-op settling steps) and some start slightly overlapping, so validity
+is judged against the UNPERTURBED initial state after the same 10 settling steps. A start is invalid, and
+a new attempt is drawn, if after settling
+  1. some object is more than 1 cm (in x, y or z) away from where it settles in the unperturbed start
+     plus its own shift (it was pushed by an overlap, toppled, fell off something or landed on another), or
+  2. some object's up axis differs by more than 10 degrees from the unperturbed settled one, or
+  3. the task is already solved.
 After 20 invalid attempts the initial state is skipped.
 """
 
@@ -18,7 +21,6 @@ from pnr.sim import MODEL_FAMILY, WAIT_STEPS, get_libero_dummy_action
 
 SHIFT_M = (0.02, 0.03)
 MAX_YAW_DEG = 15.0
-MAX_PENETRATION_M = 0.005
 MAX_SETTLE_MOVE_M = 0.01
 MAX_SETTLE_TILT_DEG = 10.0
 MAX_ATTEMPTS = 20
@@ -36,11 +38,13 @@ def _quat_mul(a, b):
 
 
 def _poses(e):
-    """Position and up axis (third column of the rotation matrix) of every movable object."""
+    """Position and the world vertical seen in the object's own frame (third row of its rotation matrix) for
+    every movable object. A rotation about the world vertical does not change that vector, a tilt does
+    (the object's own z axis is not always vertical, so its z axis itself would move with the yaw)."""
     out = {}
     for name in e.objects_dict:
         b = e.obj_body_id[name]
-        out[name] = (e.sim.data.body_xpos[b].copy(), e.sim.data.body_xmat[b].reshape(3, 3)[:, 2].copy())
+        out[name] = (e.sim.data.body_xpos[b].copy(), e.sim.data.body_xmat[b].reshape(3, 3)[2, :].copy())
     return out
 
 
@@ -66,37 +70,37 @@ def perturb(env, init_state, rng):
     return env.get_sim_state().copy(), info
 
 
-def check_valid(env, state):
-    """Returns (ok, reason). Runs the same reset + set_init_state + 10 no-op steps as a real episode."""
+def settle(env, state):
+    """Same reset + set_init_state + 10 no-op steps as a real episode. Returns object poses after it."""
     env.reset()
     env.set_init_state(state)
-    e = env.env
-    for i in range(e.sim.data.ncon):
-        c = e.sim.data.contact[i]
-        if c.dist < -MAX_PENETRATION_M:
-            g1, g2 = e.sim.model.geom_id2name(c.geom1), e.sim.model.geom_id2name(c.geom2)
-            return False, f"overlap {-c.dist * 1000:.1f} mm ({g1}, {g2})"
-    before = _poses(e)
     for _ in range(WAIT_STEPS):
         env.step(get_libero_dummy_action(MODEL_FAMILY))
-    after = _poses(e)
-    for name in before:
-        move = np.linalg.norm(after[name][0] - before[name][0])
-        tilt = np.rad2deg(np.arccos(np.clip(before[name][1] @ after[name][1], -1, 1)))
-        if move > MAX_SETTLE_MOVE_M or tilt > MAX_SETTLE_TILT_DEG:
-            return False, f"{name} moved {move * 100:.1f} cm, tilted {tilt:.0f} deg while settling"
-    if e._check_success():
+    return _poses(env.env)
+
+
+def check_valid(env, state, info, base):
+    """Returns (ok, reason). base = settle(env, unperturbed initial state); info from perturb()."""
+    after = settle(env, state)
+    for name, (dx, dy, _) in info.items():
+        expected = base[name][0] + np.array([dx, dy, 0.0])
+        off = np.abs(after[name][0] - expected).max()
+        tilt = np.rad2deg(np.arccos(np.clip(base[name][1] @ after[name][1], -1, 1)))
+        if off > MAX_SETTLE_MOVE_M or tilt > MAX_SETTLE_TILT_DEG:
+            return False, f"{name} {off * 100:.1f} cm off, tilted {tilt:.0f} deg after settling"
+    if env.env._check_success():
         return False, "task already solved"
     return True, "ok"
 
 
 def perturbed_start(env, init_state, seed, task_id, init_idx):
     """First valid perturbed start, or None. Returns (state, info, attempt, rejected reasons)."""
+    base = settle(env, init_state)
     rejected = []
     for attempt in range(MAX_ATTEMPTS):
         rng = np.random.default_rng([seed, task_id, init_idx, attempt])
         state, info = perturb(env, init_state, rng)
-        ok, reason = check_valid(env, state)
+        ok, reason = check_valid(env, state, info, base)
         if ok:
             return state, info, attempt, rejected
         rejected.append(reason)
