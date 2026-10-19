@@ -11,8 +11,9 @@
 # Same as train.sbatch, with perturbed-natural episodes added (scanned failures, pre-check recoverable
 # failures labelled 0, all perturbed successes). Separate output folder: the natural-only table stays as it is.
 # Submitted by perturbed_submit_scans.sbatch after the perturbed scan array (afterany).
+# Tasks 2, 3 and 9 are left out of the perturbed episodes: their replay gate failed (Fahad, Oct 19).
 source slurm/common.sh
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 python scripts/06_train_predictor.py --scans "data/full_scans/*.json" "data/perturbed_scans/*.json" \
-    --episodes "data/natural/*/*.npz" "data/perturbed/*/*.npz" --prechecks data/perturbed/prechecks \
+    --episodes "data/natural/*/*.npz" "data/perturbed/task0[0145678]/*.npz" --prechecks data/perturbed/prechecks \
     --out results/predictor_with_perturbed ${ARGS:-}

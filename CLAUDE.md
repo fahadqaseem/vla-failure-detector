@@ -102,7 +102,10 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
   `results/perturbed_scans/targets.txt` and submits `scan_array.sbatch`, output `data/perturbed_scans/`).
 - The replay gate (`02_replay_test.py --full`) runs on the first perturbed episode of each task, at query 1
   and the middle query, in the collection job. Pre-checks are a separate array (`slurm/precheck_perturbed.sbatch`)
-  that runs after the natural rescan (Fahad, Oct 19: collection alongside the rescan, pre-checks and scans after). `slurm/replay_gate.sbatch` tests any list of episode:query pairs.
+  that runs after the natural rescan (Fahad, Oct 19: collection alongside the rescan, pre-checks and scans after).
+- EXCLUDED for now (Fahad, Oct 19): perturbed tasks 2, 3 and 9 failed the replay gate (t2 19.7 mm, t9 37.2 mm, t3
+  only 3.2 mm but the outcome flips). No pre-checks, scans or training on their perturbed episodes; every perturbed
+  statistic says "7 of 10 tasks". `slurm/debug_t3_flip.sbatch` (low priority, after the perturbed scans) looks at t3. `slurm/replay_gate.sbatch` tests any list of episode:query pairs.
 
 Cite: RESCUE (arXiv 2610.13516), PREFAIL (arXiv 2607.16921), CheckVLA (arXiv 2607.26789).
 
