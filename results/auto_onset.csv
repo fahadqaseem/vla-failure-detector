@@ -7,13 +7,13 @@ t00_e04_n0,0,1,260,0,0,0,0,,,,,0,,,,,,,
 t00_e05_n0,0,1,264,0,0,0,0,,,,,0,,,,,,,
 t00_e06_n0,0,1,279,0,0,0,0,,,,,0,,,,,,,
 t00_e07_n0,0,1,247,0,0,0,0,,,,,0,,,,,,,
-t00_e08_n0,0,0,520,2,0,2,2,72,wrong_object,72,wrong_object,1,0,72,72,72,wrong_object,72,"72 wrong_object (cream_cheese_1); 200 wrong_object (butter_1); 360 stuck (no move > 0.01 m for 8 boundaries); 392 missed_grasp (closed at 352, reopened, nothing lifted); 432 missed_grasp (finger width 1.0 mm); 512 stuck (no move > 0.01 m for 8 boundaries)"
+t00_e08_n0,0,0,520,1,0,2,2,72,wrong_object,72,wrong_object,1,0,72,72,72,wrong_object,72,72 wrong_object (cream_cheese_1); 200 wrong_object (butter_1); 360 stuck (no move > 0.01 m for 8 boundaries); 432 missed_grasp (finger width 1.0 mm); 512 stuck (no move > 0.01 m for 8 boundaries)
 t00_e09_n0,0,1,258,0,0,0,0,,,,,0,,,,,,,
 t00_e10_n0,0,1,274,0,0,0,0,,,,,0,,,,,,,
 t00_e11_n0,0,1,266,0,0,0,0,,,,,0,,,,,,,
 t00_e12_n0,0,1,281,0,0,0,0,,,,,0,,,,,,,
 t00_e13_n0,0,1,361,0,0,1,0,,,,,0,,,,,,,200 stuck (no move > 0.01 m for 8 boundaries)
-t00_e14_n0,0,0,520,10,0,0,0,112,missed_grasp,112,missed_grasp,1,368,-256,-256,376,missed_grasp,8,"112 missed_grasp (finger width 4.0 mm); 168 missed_grasp (finger width 4.0 mm); 208 missed_grasp (finger width 2.2 mm); 256 missed_grasp (closed at 224, reopened, nothing lifted); 296 missed_grasp (finger width 2.0 mm); 336 missed_grasp (finger width 3.1 mm); 376 missed_grasp (finger width 3.1 mm); 416 missed_grasp (finger width 4.0 mm); 456 missed_grasp (closed at 432, reopened, nothing lifted); 496 missed_grasp (closed at 472, reopened, nothing lifted)"
+t00_e14_n0,0,0,520,7,0,0,0,112,missed_grasp,112,missed_grasp,1,368,-256,-256,376,missed_grasp,8,112 missed_grasp (finger width 4.0 mm); 168 missed_grasp (finger width 4.0 mm); 208 missed_grasp (finger width 2.2 mm); 296 missed_grasp (finger width 2.0 mm); 336 missed_grasp (finger width 3.1 mm); 376 missed_grasp (finger width 3.1 mm); 416 missed_grasp (finger width 4.0 mm)
 t00_e15_n0,0,1,328,0,0,1,0,,,,,0,,,,,,,184 stuck (no move > 0.01 m for 8 boundaries)
 t00_e16_n0,0,1,258,0,0,0,0,,,,,0,,,,,,,
 t00_e17_n0,0,1,275,0,0,0,0,,,,,0,,,,,,,
@@ -26,7 +26,7 @@ t00_e23_n0,0,1,267,0,0,0,0,,,,,0,,,,,,,
 t00_e24_n0,0,1,256,0,0,0,0,,,,,0,,,,,,,
 t00_e25_n0,0,1,264,0,0,0,0,,,,,0,,,,,,,
 t00_e26_n0,0,1,268,0,0,0,0,,,,,0,,,,,,,
-t00_e27_n0,0,0,520,2,0,1,2,120,wrong_object,120,wrong_object,1,0,120,120,120,wrong_object,120,"120 wrong_object (cream_cheese_1); 248 wrong_object (butter_1); 384 missed_grasp (closed at 360, reopened, nothing lifted); 416 stuck (no move > 0.01 m for 8 boundaries); 440 missed_grasp (finger width 1.1 mm)"
+t00_e27_n0,0,0,520,1,0,1,2,120,wrong_object,120,wrong_object,1,0,120,120,120,wrong_object,120,120 wrong_object (cream_cheese_1); 248 wrong_object (butter_1); 416 stuck (no move > 0.01 m for 8 boundaries); 440 missed_grasp (finger width 1.1 mm)
 t00_e28_n0,0,1,255,0,0,0,0,,,,,0,,,,,,,
 t00_e29_n0,0,1,246,0,0,0,0,,,,,0,,,,,,,
 t00_e30_n0,0,1,261,0,0,0,0,,,,,0,,,,,,,
@@ -90,7 +90,7 @@ t01_e37_n0,1,1,232,0,0,0,0,,,,,0,,,,,,,
 t01_e38_n0,1,1,226,0,0,0,0,,,,,0,,,,,,,
 t01_e39_n0,1,1,257,0,0,0,0,,,,,0,,,,,,,
 t01_e40_n0,1,1,241,0,0,0,0,,,,,0,,,,,,,
-t01_e41_n0,1,0,520,5,0,1,0,288,missed_grasp,288,missed_grasp,1,152,136,136,288,missed_grasp,136,"288 missed_grasp (closed at 232, reopened, nothing lifted); 352 missed_grasp (closed at 336, reopened, nothing lifted); 384 missed_grasp (closed at 360, reopened, nothing lifted); 416 stuck (no move > 0.01 m for 8 boundaries); 424 missed_grasp (closed at 400, reopened, nothing lifted); 480 missed_grasp (closed at 464, reopened, nothing lifted)"
+t01_e41_n0,1,0,520,2,0,1,0,288,missed_grasp,288,missed_grasp,1,152,136,136,288,missed_grasp,136,"288 missed_grasp (closed at 232, reopened, nothing lifted); 352 missed_grasp (closed at 336, reopened, nothing lifted); 416 stuck (no move > 0.01 m for 8 boundaries)"
 t01_e42_n0,1,1,237,0,0,0,0,,,,,0,,,,,,,
 t01_e43_n0,1,1,253,0,0,0,0,,,,,0,,,,,,,
 t01_e44_n0,1,1,241,0,0,0,0,,,,,0,,,,,,,
@@ -99,56 +99,56 @@ t01_e46_n0,1,1,274,0,0,0,0,,,,,0,,,,,,,
 t01_e47_n0,1,1,263,0,0,0,0,,,,,0,,,,,,,
 t01_e48_n0,1,1,246,0,0,0,0,,,,,0,,,,,,,
 t01_e49_n0,1,1,250,0,0,0,0,,,,,0,,,,,,,
-t02_e00_n0,2,1,240,1,0,0,0,,,,,1,,,,,,,"96 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e01_n0,2,1,230,1,0,0,0,,,,,1,,,,,,,"104 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e02_n0,2,1,229,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e03_n0,2,1,252,1,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e04_n0,2,1,227,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e05_n0,2,1,235,1,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e06_n0,2,1,260,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e07_n0,2,1,249,1,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e08_n0,2,1,236,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e09_n0,2,1,240,1,0,0,0,,,,,0,,,,,,,"112 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e10_n0,2,0,520,2,1,1,0,96,missed_grasp,96,missed_grasp,1,184,-88,-88,208,missed_grasp,24,"96 missed_grasp (closed at 48, reopened, nothing lifted); 208 missed_grasp (finger width 2.1 mm); 208 drop (moka_pot_1 fell 3.0 cm below the gripper); 392 stuck (no move > 0.01 m for 8 boundaries)"
-t02_e11_n0,2,1,246,1,0,0,0,,,,,0,,,,,,,"112 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e12_n0,2,1,231,1,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e13_n0,2,1,258,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e14_n0,2,1,237,1,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 40, reopened, nothing lifted)"
-t02_e15_n0,2,1,224,1,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e16_n0,2,1,242,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e17_n0,2,1,239,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e18_n0,2,1,260,1,0,0,0,,,,,0,,,,,,,"112 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e19_n0,2,1,231,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e20_n0,2,1,240,1,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e21_n0,2,1,224,1,0,0,0,,,,,0,,,,,,,"88 missed_grasp (closed at 40, reopened, nothing lifted)"
-t02_e22_n0,2,1,229,1,0,0,0,,,,,0,,,,,,,"88 missed_grasp (closed at 40, reopened, nothing lifted)"
-t02_e23_n0,2,1,260,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e24_n0,2,1,243,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e25_n0,2,1,229,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e26_n0,2,1,248,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e27_n0,2,1,236,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e28_n0,2,1,240,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e29_n0,2,1,243,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e30_n0,2,1,221,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e31_n0,2,1,238,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e32_n0,2,1,220,1,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e33_n0,2,1,221,1,0,0,0,,,,,0,,,,,,,"88 missed_grasp (closed at 40, reopened, nothing lifted)"
-t02_e34_n0,2,1,263,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e35_n0,2,1,312,2,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 48, reopened, nothing lifted); 216 missed_grasp (closed at 176, reopened, nothing lifted)"
-t02_e36_n0,2,1,223,1,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e37_n0,2,1,248,1,0,0,0,,,,,0,,,,,,,"112 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e38_n0,2,1,250,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e39_n0,2,1,246,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e40_n0,2,1,267,1,0,0,0,,,,,0,,,,,,,"112 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e41_n0,2,1,239,1,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e42_n0,2,1,269,1,0,0,0,,,,,0,,,,,,,"112 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e43_n0,2,1,228,1,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e44_n0,2,1,250,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e45_n0,2,1,229,1,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 48, reopened, nothing lifted)"
-t02_e46_n0,2,1,255,1,0,0,0,,,,,0,,,,,,,"112 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e47_n0,2,1,256,1,0,0,0,,,,,0,,,,,,,"112 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e48_n0,2,1,258,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 56, reopened, nothing lifted)"
-t02_e49_n0,2,1,253,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 48, reopened, nothing lifted)"
+t02_e00_n0,2,1,240,0,0,0,0,,,,,1,,,,,,,
+t02_e01_n0,2,1,230,0,0,0,0,,,,,1,,,,,,,
+t02_e02_n0,2,1,229,0,0,0,0,,,,,0,,,,,,,
+t02_e03_n0,2,1,252,0,0,0,0,,,,,0,,,,,,,
+t02_e04_n0,2,1,227,0,0,0,0,,,,,0,,,,,,,
+t02_e05_n0,2,1,235,0,0,0,0,,,,,0,,,,,,,
+t02_e06_n0,2,1,260,0,0,0,0,,,,,0,,,,,,,
+t02_e07_n0,2,1,249,0,0,0,0,,,,,0,,,,,,,
+t02_e08_n0,2,1,236,0,0,0,0,,,,,0,,,,,,,
+t02_e09_n0,2,1,240,0,0,0,0,,,,,0,,,,,,,
+t02_e10_n0,2,0,520,1,1,1,0,208,missed_grasp,208,missed_grasp,1,184,24,24,208,missed_grasp,24,208 missed_grasp (finger width 2.1 mm); 208 drop (moka_pot_1 fell 3.0 cm below the gripper); 392 stuck (no move > 0.01 m for 8 boundaries)
+t02_e11_n0,2,1,246,0,0,0,0,,,,,0,,,,,,,
+t02_e12_n0,2,1,231,0,0,0,0,,,,,0,,,,,,,
+t02_e13_n0,2,1,258,0,0,0,0,,,,,0,,,,,,,
+t02_e14_n0,2,1,237,0,0,0,0,,,,,0,,,,,,,
+t02_e15_n0,2,1,224,0,0,0,0,,,,,0,,,,,,,
+t02_e16_n0,2,1,242,0,0,0,0,,,,,0,,,,,,,
+t02_e17_n0,2,1,239,0,0,0,0,,,,,0,,,,,,,
+t02_e18_n0,2,1,260,0,0,0,0,,,,,0,,,,,,,
+t02_e19_n0,2,1,231,0,0,0,0,,,,,0,,,,,,,
+t02_e20_n0,2,1,240,0,0,0,0,,,,,0,,,,,,,
+t02_e21_n0,2,1,224,0,0,0,0,,,,,0,,,,,,,
+t02_e22_n0,2,1,229,0,0,0,0,,,,,0,,,,,,,
+t02_e23_n0,2,1,260,0,0,0,0,,,,,0,,,,,,,
+t02_e24_n0,2,1,243,0,0,0,0,,,,,0,,,,,,,
+t02_e25_n0,2,1,229,0,0,0,0,,,,,0,,,,,,,
+t02_e26_n0,2,1,248,0,0,0,0,,,,,0,,,,,,,
+t02_e27_n0,2,1,236,0,0,0,0,,,,,0,,,,,,,
+t02_e28_n0,2,1,240,0,0,0,0,,,,,0,,,,,,,
+t02_e29_n0,2,1,243,0,0,0,0,,,,,0,,,,,,,
+t02_e30_n0,2,1,221,0,0,0,0,,,,,0,,,,,,,
+t02_e31_n0,2,1,238,0,0,0,0,,,,,0,,,,,,,
+t02_e32_n0,2,1,220,0,0,0,0,,,,,0,,,,,,,
+t02_e33_n0,2,1,221,0,0,0,0,,,,,0,,,,,,,
+t02_e34_n0,2,1,263,0,0,0,0,,,,,0,,,,,,,
+t02_e35_n0,2,1,312,1,0,0,0,,,,,0,,,,,,,"216 missed_grasp (closed at 176, reopened, nothing lifted)"
+t02_e36_n0,2,1,223,0,0,0,0,,,,,0,,,,,,,
+t02_e37_n0,2,1,248,0,0,0,0,,,,,0,,,,,,,
+t02_e38_n0,2,1,250,0,0,0,0,,,,,0,,,,,,,
+t02_e39_n0,2,1,246,0,0,0,0,,,,,0,,,,,,,
+t02_e40_n0,2,1,267,0,0,0,0,,,,,0,,,,,,,
+t02_e41_n0,2,1,239,0,0,0,0,,,,,0,,,,,,,
+t02_e42_n0,2,1,269,0,0,0,0,,,,,0,,,,,,,
+t02_e43_n0,2,1,228,0,0,0,0,,,,,0,,,,,,,
+t02_e44_n0,2,1,250,0,0,0,0,,,,,0,,,,,,,
+t02_e45_n0,2,1,229,0,0,0,0,,,,,0,,,,,,,
+t02_e46_n0,2,1,255,0,0,0,0,,,,,0,,,,,,,
+t02_e47_n0,2,1,256,0,0,0,0,,,,,0,,,,,,,
+t02_e48_n0,2,1,258,0,0,0,0,,,,,0,,,,,,,
+t02_e49_n0,2,1,253,0,0,0,0,,,,,0,,,,,,,
 t03_e00_n0,3,1,218,1,0,0,0,,,,,1,,,,,,,96 missed_grasp (finger width 4.8 mm)
 t03_e01_n0,3,1,217,0,0,0,0,,,,,1,,,,,,,
 t03_e02_n0,3,1,286,0,0,0,0,,,,,0,,,,,,,
@@ -210,7 +210,7 @@ t04_e07_n0,4,1,233,0,0,0,0,,,,,0,,,,,,,
 t04_e08_n0,4,1,222,1,0,0,0,,,,,0,,,,,,,"104 missed_grasp (closed at 32, reopened, nothing lifted)"
 t04_e09_n0,4,1,229,0,0,0,0,,,,,0,,,,,,,
 t04_e10_n0,4,1,210,0,0,0,0,,,,,0,,,,,,,
-t04_e11_n0,4,0,520,5,0,1,0,112,missed_grasp,112,missed_grasp,1,176,-64,-64,448,missed_grasp,272,"112 missed_grasp (closed at 40, reopened, nothing lifted); 160 missed_grasp (closed at 128, reopened, nothing lifted); 168 stuck (no move > 0.01 m for 8 boundaries); 448 missed_grasp (closed at 432, reopened, nothing lifted); 472 missed_grasp (closed at 456, reopened, nothing lifted); 496 missed_grasp (closed at 480, reopened, nothing lifted)"
+t04_e11_n0,4,0,520,2,0,1,0,112,missed_grasp,112,missed_grasp,1,176,-64,-64,,,,"112 missed_grasp (closed at 40, reopened, nothing lifted); 160 missed_grasp (closed at 128, reopened, nothing lifted); 168 stuck (no move > 0.01 m for 8 boundaries)"
 t04_e12_n0,4,1,230,0,0,0,0,,,,,0,,,,,,,
 t04_e13_n0,4,1,217,1,0,0,0,,,,,0,,,,,,,"96 missed_grasp (closed at 32, reopened, nothing lifted)"
 t04_e14_n0,4,1,228,0,0,0,0,,,,,0,,,,,,,
@@ -246,7 +246,7 @@ t04_e43_n0,4,1,238,0,0,0,0,,,,,0,,,,,,,
 t04_e44_n0,4,1,238,0,0,0,0,,,,,0,,,,,,,
 t04_e45_n0,4,1,219,0,0,0,0,,,,,0,,,,,,,
 t04_e46_n0,4,1,229,0,0,0,0,,,,,0,,,,,,,
-t04_e47_n0,4,1,219,1,0,0,0,,,,,0,,,,,,,"56 missed_grasp (closed at 40, reopened, nothing lifted)"
+t04_e47_n0,4,1,219,0,0,0,0,,,,,0,,,,,,,
 t04_e48_n0,4,1,221,0,0,0,0,,,,,0,,,,,,,
 t04_e49_n0,4,1,235,0,0,0,0,,,,,0,,,,,,,
 t05_e00_n0,5,1,170,0,0,0,0,,,,,1,,,,,,,
@@ -325,7 +325,7 @@ t06_e22_n0,6,1,200,0,0,0,0,,,,,0,,,,,,,
 t06_e23_n0,6,0,520,0,0,1,0,344,stuck,,,1,432,-88,,,,,344 stuck (no move > 0.01 m for 8 boundaries)
 t06_e24_n0,6,1,229,0,0,0,0,,,,,0,,,,,,,
 t06_e25_n0,6,0,520,0,0,1,0,296,stuck,,,1,392,-96,,,,,296 stuck (no move > 0.01 m for 8 boundaries)
-t06_e26_n0,6,0,520,3,0,2,0,176,stuck,400,missed_grasp,1,376,-200,24,400,missed_grasp,24,"176 stuck (no move > 0.01 m for 8 boundaries); 400 missed_grasp (finger width 4.3 mm); 448 missed_grasp (closed at 432, reopened, nothing lifted); 480 stuck (no move > 0.01 m for 8 boundaries); 512 missed_grasp (closed at 456, reopened, nothing lifted)"
+t06_e26_n0,6,0,520,1,0,2,0,176,stuck,400,missed_grasp,1,376,-200,24,400,missed_grasp,24,176 stuck (no move > 0.01 m for 8 boundaries); 400 missed_grasp (finger width 4.3 mm); 480 stuck (no move > 0.01 m for 8 boundaries)
 t06_e27_n0,6,0,520,1,0,1,0,128,missed_grasp,128,missed_grasp,1,472,-344,-344,,,,"128 missed_grasp (closed at 40, reopened, nothing lifted); 304 stuck (no move > 0.01 m for 8 boundaries)"
 t06_e28_n0,6,0,520,0,0,1,0,296,stuck,,,1,,,,,,,296 stuck (no move > 0.01 m for 8 boundaries)
 t06_e29_n0,6,1,210,0,0,0,0,,,,,0,,,,,,,

@@ -7,9 +7,14 @@ is first seen:
   missed_grasp  (a) the gripper was commanded closed during the last chunk, the fingers are fully closed
                 (width < --closed_width) and no object is held; or (b) a grasp attempt ends without
                 lifting anything: the gripper is commanded closed (last action of a chunk +1) and later
-                open again (last action -1), and no object was held at any boundary in between. This
-                catches grasps that close on a handle (fingers not fully closed) and reopen (t08_e06, Oct 18).
-                (b) is stamped at the boundary where the reopening is seen; one event per attempt.
+                open again (last action -1), no object was held at any boundary in between, and the
+                gripper touched an object during the attempt: at some boundary a finger geom is in
+                contact with an object geom, or, after a whole chunk commanded closed, the fingers stopped
+                (width changed < --stop_mm since the last boundary) before fully closed while no finger
+                touches a fixture (stove knob, drawer or microwave handle: task 2 turns the knob in
+                every successful run, so a stop on a fixture is not a grasp of an object). This catches grasps
+                that close on a handle and reopen (t08_e06, Oct 18) but not a gripper that opens and closes
+                in the air (Fahad, Oct 18 late). (b) is stamped at the reopening; one event per attempt.
   drop          an object held at the previous boundary is no longer held and fell relative to the eef
                 (object z down minus eef z down > --drop_dz), while the gripper was commanded closed the
                 whole chunk (no open command).
@@ -51,6 +56,7 @@ p.add_argument("--lift_dz", type=float, default=0.03, help="rise (m) above the s
 p.add_argument("--hold_dist", type=float, default=0.10, help="max object-eef distance (m) for a held object (moka pots are held by the handle, about 8 cm from their origin)")
 p.add_argument("--drop_dz", type=float, default=0.02, help="fall (m) between boundaries that counts as a drop")
 p.add_argument("--move_m", type=float, default=0.01)
+p.add_argument("--stop_mm", type=float, default=1.0, help="fingers stopped = width changed less than this (mm) between boundaries")
 p.add_argument("--stuck_n", type=int, default=0, help="0 = choose automatically (see --stuck_max_success)")
 p.add_argument("--stuck_max_success", type=float, default=0.05)
 p.add_argument("--tau_min_success", type=int, default=3, help="t_pnr rule, as in 06_train_predictor.py (tau 0.5, K 4)")
@@ -89,6 +95,13 @@ def detect(ep):
     e = env.env
     objs = list(e.objects_dict)
     finger_addr = [e.sim.model.get_joint_qpos_addr(j) for j in e.robots[0].gripper.joints]
+    g = e.robots[0].gripper.important_geoms
+    finger_geoms = {e.sim.model.geom_name2id(n) for n in g["left_finger"] + g["right_finger"]}
+    m = e.sim.model
+    obj_bodies = {b for b in range(m.nbody) if any((m.body_id2name(b) or "").startswith(o + "_") for o in objs)}
+    obj_geoms = {i for i in range(m.ngeom) if m.geom_bodyid[i] in obj_bodies}
+    fix_bodies = {b for b in range(m.nbody) if any((m.body_id2name(b) or "").startswith(f + "_") for f in e.fixtures_dict)}
+    fix_geoms = {i for i in range(m.ngeom) if m.geom_bodyid[i] in fix_bodies}
     steps = ep["query_steps"].astype(int)
     eef, actions = ep["eef"], ep["actions"]
 
@@ -97,7 +110,8 @@ def detect(ep):
     z0 = None
     prev_held, prev_z = set(), None
     still, in_miss, wrong_seen = 0, False, set()
-    grasp_start, grasp_held, grasp_missed = None, False, False  # current grasp attempt (rule b)
+    grasp_start, grasp_held, grasp_missed, grasp_touched = None, False, False, False  # current grasp attempt (rule b)
+    prev_width = None
     for k, s in enumerate(steps):
         env.set_init_state(ep["query_states"][k])
         pos = {o: e.sim.data.body_xpos[e.obj_body_id[o]].copy() for o in objs}
@@ -105,13 +119,18 @@ def detect(ep):
         if z0 is None:
             z0 = z
         width = e.sim.data.qpos[finger_addr[0]] - e.sim.data.qpos[finger_addr[1]]
+        e.sim.forward()  # contacts are only computed by forward()
+        finger_contacts = [{c.geom1, c.geom2} for c in e.sim.data.contact[:e.sim.data.ncon]
+                           if {c.geom1, c.geom2} & finger_geoms]
+        touching = any(gs & obj_geoms for gs in finger_contacts)
+        on_fixture = any(gs & fix_geoms for gs in finger_contacts)
         held = {o for o in objs if z[o] - z0[o] > args.lift_dz and np.linalg.norm(pos[o] - eef[s]) < args.hold_dist}
         prev_cmd = actions[steps[k - 1]:s, -1] if k > 0 else np.zeros(0)
         closed_cmd = len(prev_cmd) > 0 and (prev_cmd > 0).all()
 
         last_cmd = prev_cmd[-1] if len(prev_cmd) else 0.0
         if grasp_start is None and last_cmd > 0:
-            grasp_start, grasp_held, grasp_missed = int(steps[k - 1]), False, False
+            grasp_start, grasp_held, grasp_missed, grasp_touched = int(steps[k - 1]), False, False, False
         miss = closed_cmd and width < args.closed_width and not held
         if miss and not in_miss:
             events.append((int(s), "missed_grasp", f"finger width {width * 1000:.1f} mm"))
@@ -119,8 +138,11 @@ def detect(ep):
         in_miss = miss
         if grasp_start is not None:
             grasp_held = grasp_held or bool(held)
+            stopped = (closed_cmd and prev_width is not None and width >= args.closed_width
+                       and abs(width - prev_width) * 1000 < args.stop_mm and not on_fixture)
+            grasp_touched = grasp_touched or touching or stopped
             if last_cmd < 0:
-                if not grasp_held and not grasp_missed:
+                if not grasp_held and not grasp_missed and grasp_touched:
                     events.append((int(s), "missed_grasp", f"closed at {grasp_start}, reopened, nothing lifted"))
                 grasp_start = None
         for o in prev_held - held:
@@ -136,7 +158,7 @@ def detect(ep):
         if args.verbose:
             print(f"  step {s:3d} width {width * 1000:5.1f} mm  cmd {prev_cmd.mean() if len(prev_cmd) else 0:+.2f}  "
                   f"held {sorted(held)}  still {still}")
-        prev_held, prev_z = held, z
+        prev_held, prev_z, prev_width = held, z, width
     return events, stills
 
 

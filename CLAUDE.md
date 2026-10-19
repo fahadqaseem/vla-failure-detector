@@ -86,12 +86,12 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
 - Episodes go to `data/perturbed/taskXX/`, ids `tXX_eYY_p0`, labelled "perturbed-natural" (field
   `perturbed`, with `perturbation` and `base_init_state`). Never pooled with the original 500 natural
   episodes in a statistic without saying so.
-- Pre-check (`09_precheck.py`) for every new failure: K = 4 replays (noise 0.05, extra_steps 200) from the
-  last chunk boundary at or before 75% of the episode. If 2 or more succeed: "recoverable (pre-check)", no
-  full scan (label 0 at every step). Otherwise full scan (every 8 steps, K 4, tau 0.5) as an array job
-  (`slurm/perturbed_submit_scans.sbatch` writes `results/perturbed_scans/targets.txt` and submits
-  `scan_array.sbatch`, output `data/perturbed_scans/`). Note: 2 of 4 is a looser bar than tau 0.5
-  (3 of 4), so a pre-check "recoverable" failure could still have a `t_pnr` after the 75% point.
+- Pre-check (`09_precheck.py`, Fahad Oct 18 late: 3 of 4, checkpoint near the end) for every new failure:
+  K = 4 replays (noise 0.05, extra_steps 200) from the last chunk boundary at or before t_end - 32. If 3 or
+  more succeed (the tau 0.5 bar): "recoverable (pre-check)", no full scan (label 0 at every step; the last
+  checkpoint is recoverable, so `t_pnr` would be None anyway, apart from replay noise). Otherwise full scan
+  (every 8 steps, K 4, tau 0.5) as an array job (`slurm/perturbed_submit_scans.sbatch` writes
+  `results/perturbed_scans/targets.txt` and submits `scan_array.sbatch`, output `data/perturbed_scans/`).
 - The replay gate (`02_replay_test.py --full`) runs on the first perturbed episode of each task before
   its pre-checks.
 

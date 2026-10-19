@@ -11,12 +11,12 @@ Thresholds: fully closed < 5 mm, lifted > 3 cm, held within 10 cm, drop > 2 cm r
 
 | event | failures with it | first event in failures (onset_any) | successes with it (recovered slips) |
 |---|---|---|---|
-| missed_grasp | 21 | 15 | 87 |
+| missed_grasp | 21 | 15 | 38 |
 | drop | 1 | 0 | 2 |
 | stuck | 24 | 10 | 23 |
 | wrong_object | 3 | 3 | 0 |
 
-Successes with at least one event: 105 of 472; with a strict event: 88 of 472.
+Successes with at least one event: 56 of 472; with a strict event: 39 of 472.
 
 Intervention window onset - t_pnr (steps; tau 0.5; t_pnr 0 = doomed from start):
 
@@ -27,10 +27,10 @@ Intervention window onset - t_pnr (steps; tau 0.5; t_pnr 0 = doomed from start):
 | t00_e27_n0 | 0 | 120 | 120 | 120 | 120 | 120 (wrong_object) | 120 |
 | t00_e42_n0 | 0 | 72 | 72 | 72 | 72 | 72 (wrong_object) | 72 |
 | t01_e41_n0 | 152 | 288 | 136 | 288 | 136 | 288 (missed_grasp) | 136 |
-| t02_e10_n0 | 184 | 96 | -88 | 96 | -88 | 208 (missed_grasp) | 24 |
+| t02_e10_n0 | 184 | 208 | 24 | 208 | 24 | 208 (missed_grasp) | 24 |
 | t03_e37_n0 | None | 88 | None | 88 | None | None () | None |
 | t03_e43_n0 | None | 96 | None | 96 | None | None () | None |
-| t04_e11_n0 | 176 | 112 | -64 | 112 | -64 | 448 (missed_grasp) | 272 |
+| t04_e11_n0 | 176 | 112 | -64 | 112 | -64 | None () | None |
 | t06_e20_n0 | None | 304 | None | None | None | None () | None |
 | t06_e23_n0 | 432 | 344 | -88 | None | None | None () | None |
 | t06_e25_n0 | 392 | 296 | -96 | None | None | None () | None |
@@ -51,4 +51,4 @@ Intervention window onset - t_pnr (steps; tau 0.5; t_pnr 0 = doomed from start):
 | t09_e25_n0 | 192 | 304 | 112 | None | None | 304 (stuck) | 112 |
 | t09_e34_n0 | None | 248 | None | None | None | None () | None |
 
-Failures with a t_pnr: 14 of 28 scanned (3 doomed from start). With an event at or after t_pnr: 11. Onset before t_pnr (window < 0): onset_any 8, onset_strict 4.
+Failures with a t_pnr: 14 of 28 scanned (3 doomed from start). With an event at or after t_pnr: 10. Onset before t_pnr (window < 0): onset_any 7, onset_strict 3.
