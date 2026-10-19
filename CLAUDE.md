@@ -249,6 +249,11 @@ any other change to the definition or defaults.
 - VLA-FAIL (arXiv 2606.21386): AUCPDT metric for detection accuracy plus timing.
 - Also: FIPER, ActProbe (action signals + task embedding), TDQC (value calibration), PFD (perturbation uncertainty).
 
+## How to work with Fahad
+
+- Start every reply with a short summary of at most 5 bullets in plain words. Put details below it
+  only if needed (Fahad, Oct 18 2026: long updates are too long to read).
+
 ## Style
 
 Plain, short explanations. No double hyphens in prose written for Fahad.
