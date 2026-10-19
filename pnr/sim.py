@@ -202,9 +202,10 @@ def rollout(env, policy: Policy, description: str, *, init_state=None, start_sta
 
 
 def save_episode(path: str, r: Rollout, *, task_id: int, episode_idx: int, description: str,
-                 init_state, noise_std: float, seed: int) -> None:
+                 init_state, noise_std: float, seed: int, **extra) -> None:
+    """extra: more fields to store, e.g. the perturbation of a perturbed-natural episode."""
     np.savez_compressed(
-        path,
+        path, **extra,
         task_id=task_id, episode_idx=episode_idx, description=description,
         success=r.success, t_end=r.t_end, noise_std=noise_std, seed=seed,
         induced=bool(noise_std > 0),

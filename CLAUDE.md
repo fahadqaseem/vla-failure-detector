@@ -72,6 +72,27 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
    (label 1 at every step) but are flagged, and excluded from the timing metrics
    (|t_pnr error|, eta, timely recall, late detections). Per-step AUROC still includes them.
 
+### More failures: perturbed-natural episodes (Fahad, Oct 18, 2026)
+
+- Collection (`01_collect.py --perturb`, `pnr/perturb.py`, `slurm/collect_perturbed.sbatch`): for each
+  LIBERO-10 task and each initial state 0 to 49, move every movable object (`objects_dict`, not fixtures)
+  by a random 2 to 3 cm in a random direction in x, y and rotate it about the vertical axis by up to
+  15 degrees. Seeded per (seed, task, init index, attempt). No action noise, features saved.
+- Invalid start = an overlap of more than 5 mm right after the move, or an object that moves more than
+  1 cm or tilts more than 10 degrees during the 10 settling steps, or a task already solved. Then a new
+  attempt is drawn; after 20 invalid attempts that initial state is skipped.
+- Episodes go to `data/perturbed/taskXX/`, ids `tXX_eYY_p0`, labelled "perturbed-natural" (field
+  `perturbed`, with `perturbation` and `base_init_state`). Never pooled with the original 500 natural
+  episodes in a statistic without saying so.
+- Pre-check (`09_precheck.py`) for every new failure: K = 4 replays (noise 0.05, extra_steps 200) from the
+  last chunk boundary at or before 75% of the episode. If 2 or more succeed: "recoverable (pre-check)", no
+  full scan (label 0 at every step). Otherwise full scan (every 8 steps, K 4, tau 0.5) as an array job
+  (`slurm/perturbed_submit_scans.sbatch` writes `results/perturbed_scans/targets.txt` and submits
+  `scan_array.sbatch`, output `data/perturbed_scans/`). Note: 2 of 4 is a looser bar than tau 0.5
+  (3 of 4), so a pre-check "recoverable" failure could still have a `t_pnr` after the 75% point.
+- The replay gate (`02_replay_test.py --full`) runs on the first perturbed episode of each task before
+  its pre-checks.
+
 Cite: RESCUE (arXiv 2610.13516), PREFAIL (arXiv 2607.16921), CheckVLA (arXiv 2607.26789).
 
 The pilot (Oct 2 to Oct 16, Mac) measured `t_pnr` = 33 to 48 on one induced failure and found the
@@ -174,6 +195,8 @@ any other change to the definition or defaults.
 - `scripts/04_analyze.py`        table + figures; optional `--onsets` and `--alarms` CSVs.
 - `scripts/07_auto_onset.py`     automatic t_onset from saved sim states (CPU); results/auto_onset.csv.
 - `scripts/07_figures.py`        t_pnr distribution and predicted vs replay risk plots.
+- `pnr/perturb.py`     perturbed initial states (object shift 2-3 cm, yaw up to 15 deg) and validity checks.
+- `scripts/09_precheck.py`       4 replays at 75% of a new failure: recoverable (pre-check) or scan.
 - `scripts/compare_episodes.py`  two recordings of one episode must be identical (gate after code changes).
 - `scripts/pick_failures.py`     fixed rule to pick natural failures from different tasks for scans.
 - `scripts/scan_targets.py`      fixed list of episodes to label by full scan (results/full_scans/targets.txt).

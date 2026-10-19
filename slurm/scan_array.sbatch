@@ -13,10 +13,13 @@
 # Full replay scans (every checkpoint) used as t_pnr labels: one array task per line of
 # results/full_scans/targets.txt (all natural failures, then 2 successes per task; scripts/scan_targets.py).
 # %4 = at most 4 at once. Episodes already scanned (output JSON exists) are skipped.
+# TARGETS and OUT can be set for other episode sets (perturbed-natural: slurm/perturbed_submit_scans.sbatch).
 source slurm/common.sh
-EP=$(sed -n "$((SLURM_ARRAY_TASK_ID + 1))p" results/full_scans/targets.txt)
+TARGETS=${TARGETS:-results/full_scans/targets.txt}
+OUT=${OUT:-data/full_scans}
+EP=$(sed -n "$((SLURM_ARRAY_TASK_ID + 1))p" "$TARGETS")
 if [ -z "$EP" ]; then echo "no target for line $SLURM_ARRAY_TASK_ID"; exit 0; fi
-if [ -f "data/full_scans/$(basename "$EP" .npz).json" ]; then echo "already scanned: $EP"; exit 0; fi
+if [ -f "$OUT/$(basename "$EP" .npz).json" ]; then echo "already scanned: $EP"; exit 0; fi
 echo "target $SLURM_ARRAY_TASK_ID: $EP"
 python scripts/03_pnr_scan.py --episodes "$EP" --include_success 1 --every 8 --K 4 --min_fail 2 \
-    --noise_std 0.05 --extra_steps 200 --full_curve --out data/full_scans
+    --noise_std 0.05 --extra_steps 200 --full_curve --out "$OUT"
