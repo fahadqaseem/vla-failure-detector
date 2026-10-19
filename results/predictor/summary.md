@@ -2,15 +2,18 @@
 
 Labels: full replay scans, K 4, tau 0.5 (>= 3 of 4 succeed = recoverable). Scanned failures: 28; doomed from start (t_pnr 0, left out of timing): 3. Training and test use all natural successes. Threshold: conformal, alpha 0.05, from cross-fitted scores of all training-task successes. epochs 300, lr 0.001, weight decay 0.001, hidden 256, seed 0, progress 0.01 m.
 
-Timely = alarm at or before t_pnr; late = after; lead = t_pnr - t_alarm (positive = early); |err| = mean |t_alarm - t_pnr|; all over alarmed failures with t_pnr > 0.
+Timely = alarm at or before t_pnr; late = after; lead = t_pnr - t_alarm (positive = early); |err| = mean |t_alarm - t_pnr|; all over alarmed failures with t_pnr > 0. Time-matched AUROC: label-1 steps vs success steps in the same 64-step bin only. Unnecessary alarms on recoverable failures = alarms on failures that never pass a t_pnr.
 
-| model | per-step AUROC | false alarms on successes | failures with t_pnr > 0 | recall | timely | late | missed | median lead (steps) | mean abs err (steps) | median eta | alarms on recoverable failures |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| timer | 0.859 | 0.091 (of 472) | 11 | 1.00 | 4 | 7 | 0 | -24.0 | 117.1 | 1.07 | 14 of 14 |
-| progress | 0.700 | 0.049 (of 472) | 11 | 0.91 | 6 | 4 | 1 | 52.0 | 152.8 | 0.88 | 11 of 14 |
-| safe | 0.751 | 0.051 (of 472) | 11 | 0.18 | 0 | 2 | 9 | -116.0 | 116.0 | 1.71 | 2 of 14 |
-| logreg | 0.745 | 0.106 (of 472) | 11 | 0.27 | 2 | 1 | 8 | 8.0 | 85.3 | 0.98 | 2 of 14 |
-| mlp | 0.759 | 0.106 (of 472) | 11 | 0.27 | 2 | 1 | 8 | 120.0 | 138.7 | 0.65 | 0 of 14 |
+Episodes: natural: 28 labelled failures, 472 successes (pooled in every number below).
+
+| model | unnecessary alarms on recoverable failures | false alarms on successes | per-step AUROC | time-matched AUROC | failures with t_pnr > 0 | recall | timely | late | missed | median lead (steps) | mean abs err (steps) | median eta |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| timer | 14 of 14 | 0.091 (of 472) | 0.859 | 0.555 | 11 | 1.00 | 4 | 7 | 0 | -24.0 | 117.1 | 1.07 |
+| progress | 11 of 14 | 0.049 (of 472) | 0.700 | 0.515 | 11 | 0.91 | 6 | 4 | 1 | 52.0 | 152.8 | 0.88 |
+| safe | 2 of 14 | 0.051 (of 472) | 0.751 | 0.518 | 11 | 0.18 | 0 | 2 | 9 | -116.0 | 116.0 | 1.71 |
+| logreg | 2 of 14 | 0.106 (of 472) | 0.745 | 0.528 | 11 | 0.27 | 2 | 1 | 8 | 8.0 | 85.3 | 0.98 |
+| mlp | 0 of 14 | 0.106 (of 472) | 0.759 | 0.535 | 11 | 0.27 | 2 | 1 | 8 | 120.0 | 138.7 | 0.65 |
+| combined | 0 of 14 | 0.108 (of 472) | 0.759 | 0.503 | 11 | 0.18 | 2 | 0 | 9 | 160.0 | 160.0 | 0.33 |
 
 Labelled failures, per model: t_pnr -> t_alarm (lead time)
 
@@ -34,16 +37,22 @@ Labelled failures, per model: t_pnr -> t_alarm (lead time)
 - mlp t00_e14_n0: t_pnr 368 -> t_alarm 240 (lead 128, threshold 0.286)
 - mlp t00_e27_n0: t_pnr 0 (doomed from start) -> t_alarm 64 (lead -64, threshold 0.286)
 - mlp t00_e42_n0: t_pnr 0 (doomed from start) -> t_alarm 376 (lead -376, threshold 0.286)
+- combined t00_e08_n0: t_pnr 0 (doomed from start) -> t_alarm 264 (lead -264, threshold 0.383)
+- combined t00_e14_n0: t_pnr 368 -> t_alarm 168 (lead 200, threshold 0.383)
+- combined t00_e27_n0: t_pnr 0 (doomed from start) -> t_alarm 64 (lead -64, threshold 0.383)
+- combined t00_e42_n0: t_pnr 0 (doomed from start) -> t_alarm 336 (lead -336, threshold 0.383)
 - timer t01_e41_n0: t_pnr 152 -> t_alarm 392 (lead -240, threshold 384.000)
 - progress t01_e41_n0: t_pnr 152 -> t_alarm 424 (lead -272, threshold 8.000)
 - safe t01_e41_n0: t_pnr 152 -> t_alarm 288 (lead -136, threshold 0.998)
 - logreg t01_e41_n0: t_pnr 152 -> t_alarm 72 (lead 80, threshold 0.985)
 - mlp t01_e41_n0: t_pnr 152 -> t_alarm 32 (lead 120, threshold 0.933)
+- combined t01_e41_n0: t_pnr 152 -> t_alarm 32 (lead 120, threshold 0.889)
 - timer t02_e10_n0: t_pnr 184 -> t_alarm 392 (lead -208, threshold 384.000)
 - progress t02_e10_n0: t_pnr 184 -> t_alarm 400 (lead -216, threshold 8.000)
 - safe t02_e10_n0: t_pnr 184 -> t_alarm 280 (lead -96, threshold 0.999)
 - logreg t02_e10_n0: t_pnr 184 -> t_alarm None (lead None, threshold 0.997)
 - mlp t02_e10_n0: t_pnr 184 -> t_alarm None (lead None, threshold 0.999)
+- combined t02_e10_n0: t_pnr 184 -> t_alarm None (lead None, threshold 0.998)
 - timer t03_e37_n0: t_pnr None -> t_alarm 392 (lead None, threshold 384.000)
 - timer t03_e43_n0: t_pnr None -> t_alarm 392 (lead None, threshold 384.000)
 - progress t03_e37_n0: t_pnr None -> t_alarm 280 (lead None, threshold 8.000)
@@ -54,11 +63,14 @@ Labelled failures, per model: t_pnr -> t_alarm (lead time)
 - logreg t03_e43_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
 - mlp t03_e37_n0: t_pnr None -> t_alarm None (lead None, threshold 0.999)
 - mlp t03_e43_n0: t_pnr None -> t_alarm None (lead None, threshold 0.999)
+- combined t03_e37_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
+- combined t03_e43_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
 - timer t04_e11_n0: t_pnr 176 -> t_alarm 392 (lead -216, threshold 384.000)
 - progress t04_e11_n0: t_pnr 176 -> t_alarm 176 (lead 0, threshold 8.000)
 - safe t04_e11_n0: t_pnr 176 -> t_alarm None (lead None, threshold 0.999)
 - logreg t04_e11_n0: t_pnr 176 -> t_alarm None (lead None, threshold 0.997)
 - mlp t04_e11_n0: t_pnr 176 -> t_alarm None (lead None, threshold 0.999)
+- combined t04_e11_n0: t_pnr 176 -> t_alarm None (lead None, threshold 0.998)
 - timer t06_e20_n0: t_pnr None -> t_alarm 384 (lead None, threshold 376.000)
 - timer t06_e23_n0: t_pnr 432 -> t_alarm 384 (lead 48, threshold 376.000)
 - timer t06_e25_n0: t_pnr 392 -> t_alarm 384 (lead 8, threshold 376.000)
@@ -89,6 +101,12 @@ Labelled failures, per model: t_pnr -> t_alarm (lead time)
 - mlp t06_e26_n0: t_pnr 376 -> t_alarm None (lead None, threshold 0.999)
 - mlp t06_e27_n0: t_pnr 472 -> t_alarm None (lead None, threshold 0.999)
 - mlp t06_e28_n0: t_pnr None -> t_alarm None (lead None, threshold 0.999)
+- combined t06_e20_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
+- combined t06_e23_n0: t_pnr 432 -> t_alarm None (lead None, threshold 0.998)
+- combined t06_e25_n0: t_pnr 392 -> t_alarm None (lead None, threshold 0.998)
+- combined t06_e26_n0: t_pnr 376 -> t_alarm None (lead None, threshold 0.998)
+- combined t06_e27_n0: t_pnr 472 -> t_alarm None (lead None, threshold 0.998)
+- combined t06_e28_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
 - timer t08_e04_n0: t_pnr 488 -> t_alarm 312 (lead 176, threshold 304.000)
 - timer t08_e06_n0: t_pnr None -> t_alarm 312 (lead None, threshold 304.000)
 - timer t08_e08_n0: t_pnr None -> t_alarm 312 (lead None, threshold 304.000)
@@ -144,6 +162,17 @@ Labelled failures, per model: t_pnr -> t_alarm (lead time)
 - mlp t08_e38_n0: t_pnr 232 -> t_alarm 400 (lead -168, threshold 0.999)
 - mlp t08_e45_n0: t_pnr None -> t_alarm None (lead None, threshold 0.999)
 - mlp t08_e47_n0: t_pnr None -> t_alarm None (lead None, threshold 0.999)
+- combined t08_e04_n0: t_pnr 488 -> t_alarm None (lead None, threshold 0.998)
+- combined t08_e06_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
+- combined t08_e08_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
+- combined t08_e11_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
+- combined t08_e12_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
+- combined t08_e20_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
+- combined t08_e27_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
+- combined t08_e30_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
+- combined t08_e38_n0: t_pnr 232 -> t_alarm None (lead None, threshold 0.998)
+- combined t08_e45_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
+- combined t08_e47_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)
 - timer t09_e25_n0: t_pnr 192 -> t_alarm 384 (lead -192, threshold 376.000)
 - timer t09_e34_n0: t_pnr None -> t_alarm 384 (lead None, threshold 376.000)
 - progress t09_e25_n0: t_pnr 192 -> t_alarm 304 (lead -112, threshold 7.000)
@@ -154,3 +183,5 @@ Labelled failures, per model: t_pnr -> t_alarm (lead time)
 - logreg t09_e34_n0: t_pnr None -> t_alarm None (lead None, threshold 0.997)
 - mlp t09_e25_n0: t_pnr 192 -> t_alarm None (lead None, threshold 0.999)
 - mlp t09_e34_n0: t_pnr None -> t_alarm None (lead None, threshold 0.999)
+- combined t09_e25_n0: t_pnr 192 -> t_alarm None (lead None, threshold 0.998)
+- combined t09_e34_n0: t_pnr None -> t_alarm None (lead None, threshold 0.998)

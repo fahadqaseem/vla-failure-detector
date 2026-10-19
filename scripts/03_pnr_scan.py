@@ -86,8 +86,7 @@ for f, ep in todo:
         continue
     env, desc, _ = make_task(int(ep["task_id"]))
     q_steps = [int(s) for s in ep["query_steps"]]
-    states = {s: ep["query_states"][i] for i, s in enumerate(q_steps)}
-    grippers = {s: ep["query_grippers"][i] for i, s in enumerate(q_steps)}
+    query_of = {s: i for i, s in enumerate(q_steps)}
     checkpoints = [s for s in q_steps if s % args.every == 0
                    and (args.t_min is None or s >= args.t_min) and (args.t_max is None or s <= args.t_max)]
     t_start = time.time()
@@ -99,7 +98,7 @@ for f, ep in todo:
         end_steps[c] = []
         for k in range(args.K):
             rng = np.random.default_rng([args.seed, int(ep["task_id"]), int(ep["episode_idx"]), c, k])
-            r = rollout(env, policy, desc, start_state=states[c], start_gripper=grippers[c], t0=c, noise_std=args.noise_std,
+            r = rollout(env, policy, desc, episode=ep, query=query_of[c], noise_std=args.noise_std,
                         rng=rng, record_states=False,
                         horizon=max_steps() + args.extra_steps)
             res.append(int(r.success))

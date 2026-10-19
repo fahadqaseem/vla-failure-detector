@@ -145,25 +145,51 @@ def restore(env, state, gripper):
     return obs
 
 
-def rollout(env, policy: Policy, description: str, *, init_state=None, start_state=None, start_gripper=None,
-            t0: int = 0, noise_std: float = 0.0, rng: Optional[np.random.Generator] = None,
+def restore_query(env, ep, qi):
+    """Put the env at recorded query qi so that the policy sees what it saw in the recording.
+    restore() alone gives the right sim state but not the right observation (found Oct 19 2026): robosuite
+    samples every observable at the FIRST of the 25 physics substeps of each env.step, so in a normal run the
+    policy at step t sees the state 1 substep into step t - 1, while restore() returns the state at t itself.
+    That small difference (wrist image 15 to 20% of pixels, joints 2e-4) changes the policy's actions and the
+    replay drifts by up to 13 mm. So: restore the query before (t - 8), replay its 8 recorded actions open loop
+    (this rebuilds the observation the normal way), then put the exact saved state at t back.
+    Query 0 is the start of the episode: same reset + 10 wait steps as a fresh run.
+    """
+    if qi == 0:
+        env.reset()
+        obs = env.set_init_state(ep["init_state"])
+        for _ in range(WAIT_STEPS):
+            obs, _, _, _ = env.step(get_libero_dummy_action(MODEL_FAMILY))
+        return obs
+    restore(env, ep["query_states"][qi - 1], ep["query_grippers"][qi - 1])
+    for t in range(int(ep["query_steps"][qi - 1]), int(ep["query_steps"][qi])):
+        obs, _, _, _ = env.step(ep["actions"][t].tolist())
+    e = env.env
+    e.sim.set_state_from_flattened(ep["query_states"][qi])
+    e.sim.forward()
+    e.robots[0].controller.update(force=True)
+    e.robots[0].gripper.current_action = np.array(ep["query_grippers"][qi], dtype=np.float64).copy()
+    return obs
+
+
+def rollout(env, policy: Policy, description: str, *, init_state=None, episode=None, query: Optional[int] = None,
+            noise_std: float = 0.0, rng: Optional[np.random.Generator] = None,
             record_states: bool = True, save_frames: bool = False, limit: Optional[int] = None,
             horizon: Optional[int] = None) -> Rollout:
     """Run one episode.
 
     Fresh episode:  pass init_state (one of the 50 LIBERO initial states). Does the 10 wait steps first.
-    Replay:         pass start_state and start_gripper (saved at a query) and t0 (its policy step). No wait steps.
+    Replay:         pass episode (a loaded episode file) and query (index of a recorded query); see restore_query.
     noise_std:      Gaussian noise added to the 6 arm action dims after processing (gripper untouched).
     limit:          stop after this many policy steps (used by the replay test).
     horizon:        last allowed policy step (default 520). PNR replays get extra time so late
                     checkpoints do not fail just because the clock ran out.
     """
-    assert (init_state is None) != (start_state is None), "pass exactly one of init_state / start_state"
+    assert (init_state is None) != (episode is None), "pass exactly one of init_state / episode"
     rng = rng or np.random.default_rng()
-    if start_state is not None:
-        assert start_gripper is not None, "replays need the saved gripper counter too (see restore)"
-        obs = restore(env, start_state, start_gripper)
-        t = t0
+    if episode is not None:
+        obs = restore_query(env, episode, query)
+        t = int(episode["query_steps"][query])
     else:
         # Same as the official OFT eval: reset, set the initial state, then 10 no-op steps.
         env.reset()

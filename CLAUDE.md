@@ -96,8 +96,8 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
   checkpoint is recoverable, so `t_pnr` would be None anyway, apart from replay noise). Otherwise full scan
   (every 8 steps, K 4, tau 0.5) as an array job (`slurm/perturbed_submit_scans.sbatch` writes
   `results/perturbed_scans/targets.txt` and submits `scan_array.sbatch`, output `data/perturbed_scans/`).
-- The replay gate (`02_replay_test.py --full`) runs on the first perturbed episode of each task before
-  its pre-checks.
+- The replay gate (`02_replay_test.py --full`) runs on the first perturbed episode of each task, at query 1
+  and the middle query, before its pre-checks. `slurm/replay_gate.sbatch` tests any list of episode:query pairs.
 
 Cite: RESCUE (arXiv 2610.13516), PREFAIL (arXiv 2607.16921), CheckVLA (arXiv 2607.26789).
 
@@ -170,6 +170,10 @@ any other change to the definition or defaults.
 - Max policy steps 520. The eval script first takes 10 no-op steps so objects settle.
 - Action chunk = 8 (`NUM_ACTIONS_CHUNK`), executed open loop, then the model is re-queried.
   Only restore sim state at a chunk boundary (empty action queue).
+- Replays start with `pnr.sim.restore_query` (Oct 19 2026), never `restore()` alone: robosuite samples
+  observations at the first physics substep of each env.step, so the obs from a plain restore is 1 step
+  "too new" and the replay drifts up to 13 mm. restore_query restores the query before and replays its
+  8 recorded actions. The 48 natural full scans of Oct 18 were made before this fix.
 - Images are rotated 180 degrees before the policy (`get_libero_image`). Use the repo helpers,
   never re-implement preprocessing.
 - Sim state: `env.get_sim_state()` / `env.reset(); env.set_init_state(state)` (LIBERO ControlEnv).

@@ -55,8 +55,7 @@ for eid, ep in todo:
     successes = []
     for k in range(args.K):
         rng = np.random.default_rng([args.seed, int(ep["task_id"]), int(ep["episode_idx"]), c, k])
-        r = rollout(env, policy, desc, start_state=ep["query_states"][qi], start_gripper=ep["query_grippers"][qi],
-                    t0=c, noise_std=args.noise_std, rng=rng, record_states=False,
+        r = rollout(env, policy, desc, episode=ep, query=qi, noise_std=args.noise_std, rng=rng, record_states=False,
                     horizon=max_steps() + args.extra_steps)
         successes.append(int(r.success))
     verdict = "recoverable (pre-check)" if sum(successes) >= args.min_success else "scan"
