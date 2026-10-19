@@ -64,6 +64,10 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
    false alarms are counted on all successes of the held-out task. AUROC from scikit-learn.
 5. Baselines: timer (step count), SAFE-style probe (success/fail labels), steps-since-progress
    (RESCUE: chunk boundaries since the eef last moved more than 0.01 m between successive boundaries).
+   Combined model (Fahad, Oct 18 late): MLP on the inputs of 3. plus eef displacement over the last
+   4 chunks, steps-since-progress and averaged deltas over the last 4 queries; no step index.
+   Headline columns: unnecessary alarms on recoverable failures, and a time-matched AUROC (label-1 steps
+   vs success steps in the same 64-step bin only), next to the whole-run AUROC.
 6. Evaluation: leave-one-task-out over the 10 LIBERO-10 tasks (Fahad, Oct 18; replaces the single
    fixed split): train on 9 tasks, test on the 10th, repeat for each task, report per task and pooled.
    Tasks with no labelled failure still give false alarms on their successes.
