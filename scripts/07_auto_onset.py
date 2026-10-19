@@ -4,8 +4,12 @@ At every chunk boundary (every 8 policy steps) the saved sim state is restored i
 cameras, and we read finger joint positions and object positions. The gripper command comes from the
 recorded actions (last dim: +1 close, -1 open). Events, each stamped with the boundary step where it
 is first seen:
-  missed_grasp  the gripper was commanded closed during the last chunk, the fingers are fully closed
-                (width < --closed_width) and no object is held.
+  missed_grasp  (a) the gripper was commanded closed during the last chunk, the fingers are fully closed
+                (width < --closed_width) and no object is held; or (b) a grasp attempt ends without
+                lifting anything: the gripper is commanded closed (last action of a chunk +1) and later
+                open again (last action -1), and no object was held at any boundary in between. This
+                catches grasps that close on a handle (fingers not fully closed) and reopen (t08_e06, Oct 18).
+                (b) is stamped at the boundary where the reopening is seen; one event per attempt.
   drop          an object held at the previous boundary is no longer held and fell relative to the eef
                 (object z down minus eef z down > --drop_dz), while the gripper was commanded closed the
                 whole chunk (no open command).
@@ -17,10 +21,11 @@ is first seen:
 "held" = object raised more than --lift_dz above its height at step 0 and within --hold_dist of the eef.
 Repeated events: missed_grasp and stuck are counted once per run of consecutive boundaries; wrong_object
 once per object.
-Two onsets per failed episode: onset_any = first event of any kind; onset_strict = first missed grasp,
-drop or wrong object (stuck ignored). A failure with no event gets onset None and is a "silent failure"
+Three onsets per failed episode: onset_any = first event of any kind; onset_strict = first missed grasp,
+drop or wrong object (stuck ignored); onset_after_pnr = first event of any kind at or after t_pnr
+(only for failures with a t_pnr). A failure with no event gets onset None and is a "silent failure"
 (counted separately for each version). Events in successful episodes are "recovered slips".
-If scans are given, the intervention window onset - t_pnr (tau 0.5) is added for both versions.
+If scans are given, the intervention window onset - t_pnr (tau 0.5) is added for all three versions.
 Summary: results/auto_onset_summary.md (next to --out).
 
 python scripts/07_auto_onset.py --episodes "data/natural/*/*.npz" --scans "data/full_scans/*.json" --out results/auto_onset.csv
@@ -92,6 +97,7 @@ def detect(ep):
     z0 = None
     prev_held, prev_z = set(), None
     still, in_miss, wrong_seen = 0, False, set()
+    grasp_start, grasp_held, grasp_missed = None, False, False  # current grasp attempt (rule b)
     for k, s in enumerate(steps):
         env.set_init_state(ep["query_states"][k])
         pos = {o: e.sim.data.body_xpos[e.obj_body_id[o]].copy() for o in objs}
@@ -103,10 +109,20 @@ def detect(ep):
         prev_cmd = actions[steps[k - 1]:s, -1] if k > 0 else np.zeros(0)
         closed_cmd = len(prev_cmd) > 0 and (prev_cmd > 0).all()
 
+        last_cmd = prev_cmd[-1] if len(prev_cmd) else 0.0
+        if grasp_start is None and last_cmd > 0:
+            grasp_start, grasp_held, grasp_missed = int(steps[k - 1]), False, False
         miss = closed_cmd and width < args.closed_width and not held
         if miss and not in_miss:
             events.append((int(s), "missed_grasp", f"finger width {width * 1000:.1f} mm"))
+            grasp_missed = True  # (a) already fired for this attempt; do not count it again under (b)
         in_miss = miss
+        if grasp_start is not None:
+            grasp_held = grasp_held or bool(held)
+            if last_cmd < 0:
+                if not grasp_held and not grasp_missed:
+                    events.append((int(s), "missed_grasp", f"closed at {grasp_start}, reopened, nothing lifted"))
+                grasp_start = None
         for o in prev_held - held:
             fall = (prev_z[o] - z[o]) - (eef[steps[k - 1]][2] - eef[s][2])  # relative to the gripper
             if closed_cmd and fall > args.drop_dz:
@@ -165,6 +181,8 @@ for e in eps:
     first_strict = next((ev for ev in e["events"] if ev[1] in strict_kinds), None)
     onset_any = first_any[0] if first_any and not e["success"] else None
     onset_strict = first_strict[0] if first_strict and not e["success"] else None
+    first_after = next((ev for ev in e["events"] if t_pnr is not None and ev[0] >= t_pnr), None)
+    onset_after = first_after[0] if first_after else None
     row = dict(episode_id=e["eid"], task_id=e["task"], success=int(e["success"]), t_end=e["t_end"],
                **{f"n_{k}": sum(ev[1] == k for ev in e["events"]) for k in kinds},
                onset_any=onset_any, onset_any_event=first_any[1] if onset_any is not None else "",
@@ -172,6 +190,8 @@ for e in eps:
                scanned=int(scan is not None), t_pnr=t_pnr,
                window_any=(onset_any - t_pnr) if onset_any is not None and t_pnr is not None else None,
                window_strict=(onset_strict - t_pnr) if onset_strict is not None and t_pnr is not None else None,
+               onset_after_pnr=onset_after, onset_after_pnr_event=first_after[1] if first_after else "",
+               window_after_pnr=(onset_after - t_pnr) if onset_after is not None else None,
                events="; ".join(f"{s} {k} ({d})" for s, k, d in e["events"]))
     rows.append(row)
     print(f"{e['eid']} success={e['success']} onset_any={onset_any} onset_strict={onset_strict} t_pnr={t_pnr} | {row['events']}", flush=True)
@@ -206,10 +226,17 @@ lines.append(f"Successes with at least one event: {sum(any(r[f'n_{k}'] for k in 
 win = [r for r in fails if r["scanned"]]
 if win:
     lines += ["", "Intervention window onset - t_pnr (steps; tau 0.5; t_pnr 0 = doomed from start):", "",
-              "| episode | t_pnr | onset_any | window_any | onset_strict | window_strict |", "|---|---|---|---|---|---|"]
+              "| episode | t_pnr | onset_any | window_any | onset_strict | window_strict | onset_after_pnr (event) | window_after_pnr |",
+              "|---|---|---|---|---|---|---|---|"]
     for r in win:
         lines.append(f"| {r['episode_id']} | {r['t_pnr']} | {r['onset_any']} | {r['window_any']} | "
-                     f"{r['onset_strict']} | {r['window_strict']} |")
+                     f"{r['onset_strict']} | {r['window_strict']} | {r['onset_after_pnr']} ({r['onset_after_pnr_event']}) | "
+                     f"{r['window_after_pnr']} |")
+    timed = [r for r in win if r["t_pnr"] is not None]
+    lines += ["", f"Failures with a t_pnr: {len(timed)} of {len(win)} scanned ({sum(r['t_pnr'] == 0 for r in timed)} doomed from start). "
+              f"With an event at or after t_pnr: {sum(r['onset_after_pnr'] is not None for r in timed)}. "
+              f"Onset before t_pnr (window < 0): onset_any {sum(r['window_any'] is not None and r['window_any'] < 0 for r in timed)}, "
+              f"onset_strict {sum(r['window_strict'] is not None and r['window_strict'] < 0 for r in timed)}."]
 text = "\n".join(lines) + "\n"
 open(os.path.join(os.path.dirname(args.out) or ".", "auto_onset_summary.md"), "w").write(text)
 print(text)
