@@ -68,7 +68,9 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
    4 chunks, steps-since-progress and averaged deltas over the last 4 queries; no step index.
    Headline columns: unnecessary alarms on recoverable failures, and a time-matched AUROC (label-1 steps
    vs success steps in the same 64-step bin only), next to the whole-run AUROC.
-6. Diagnostics (Fahad, Oct 19), never the headline: `--split episode` = seen tasks (5 folds by
+6. Unseen-task options (Fahad, Oct 19-20): `--task_embed` (instruction embedding, `11_task_embedding.py`) is under test;
+   `--task_norm_steps` (per-task normalisation) is DROPPED from the main pipeline (lower time-matched AUROC), code kept.
+   Diagnostics (Fahad, Oct 19), never the headline: `--split episode` = seen tasks (5 folds by
    episode_idx % 5 within each task); `--privileged` = same MLP on simulator poses
    (`10_privileged_features.py`) instead of VLA features. They show whether the gap is unseen tasks or
    the VLA features themselves.
