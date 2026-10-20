@@ -30,6 +30,11 @@ Models (same inputs, standardised with the training rows):
             components, no centring); dropout 0.3 after the ReLU; early stopping on an inner validation split (20% of
             the training episodes, failures with a t_pnr split separately), patience 30 epochs, best epoch kept.
 
+  gated_mlp, gated_combined  gated rule (Fahad, Oct 20): alarm only where the progress baseline alarms AND the learned
+            model's risk is above its threshold. Gate = progress above its own conformal threshold at --gate_alpha (20%,
+            from the training successes); score = the model's risk where the gate is open, -inf elsewhere. The usual
+            thresholds are then set on this score, so false alarms on successes stay at the limit (5%).
+
   privileged diagnostic (Fahad, Oct 19; only with --privileged): same MLP and loss, but the inputs are
             simulator poses instead of VLA features (scripts/10_privileged_features.py: eef, fingers, gripper
             counter, goal object minus target and minus eef, goal predicates true now). Shows how far the
@@ -98,6 +103,7 @@ p.add_argument("--pca_dims", type=int, default=128, help="regularised models: PC
 p.add_argument("--dropout", type=float, default=0.3, help="regularised models: dropout after the ReLU")
 p.add_argument("--val_frac", type=float, default=0.2, help="regularised models: inner validation episodes")
 p.add_argument("--patience", type=int, default=30, help="regularised models: epochs without validation gain")
+p.add_argument("--gate_alpha", type=float, default=0.20, help="gated models: false-alarm limit of the progress gate")
 p.add_argument("--progress_m", type=float, default=0.01, help="eef move (m) between boundaries that counts as progress")
 p.add_argument("--epochs", type=int, default=300)
 p.add_argument("--lr", type=float, default=1e-3)
@@ -329,8 +335,22 @@ def train(rows, model_name):
 stopped_at = []  # best epoch of every regularised fit (reported in the summary)
 
 
+fitted = {}  # (model, training episodes) -> score function, so the gated models reuse the mlp / combined fits
+
+
 def fit(model_name, train_eps):
     """Train on these episodes (or nothing, for the rule-based baselines)."""
+    key = (model_name, frozenset(e["eid"] for e in train_eps))
+    if key not in fitted:
+        fitted[key] = fit_new(model_name, train_eps)
+    return fitted[key]
+
+
+def fit_new(model_name, train_eps):
+    if model_name.startswith("gated_"):
+        risk = fit(model_name[len("gated_"):], train_eps)
+        gate = conformal_threshold([e["progress"].max() for e in train_eps if e["success"]], args.gate_alpha)
+        return lambda e: np.where(e["progress"] > gate, risk(e), -np.inf)
     if model_name == "timer":
         return lambda e: e["steps"].astype(np.float32)
     if model_name == "progress":
@@ -359,7 +379,8 @@ def time_varying_threshold(calib, alpha):
     mean, std = np.zeros(n_bins), np.ones(n_bins)
     last_ok = 0
     for b in range(n_bins):
-        in_bin = [s[st // args.bin == b] for st, s in fit_half if (st // args.bin == b).any()]
+        in_bin = [s[(st // args.bin == b) & np.isfinite(s)] for st, s in fit_half]  # -inf = gate closed
+        in_bin = [v for v in in_bin if len(v)]
         if len(in_bin) >= args.min_runs_per_bin:
             v = np.concatenate(in_bin)
             mean[b], std[b], last_ok = v.mean(), v.std() + 1e-6, b
@@ -385,7 +406,7 @@ def alarm_key(mode, alpha):
 
 
 # ---- leave-one-group-out: group = task (default), or episode fold (--split episode) ----
-models = (["timer", "progress", "safe", "logreg", "mlp", "combined", "mlp_reg", "combined_reg"]
+models = (["timer", "progress", "safe", "logreg", "mlp", "combined", "mlp_reg", "combined_reg", "gated_mlp", "gated_combined"]
           + (["privileged"] if args.privileged else []))
 alphas = sorted(set(args.alphas) | {args.alpha})
 headline = alarm_key("fixed", args.alpha)
@@ -420,6 +441,8 @@ def summarise(rows, key=None):
     rows = [dict(r, t_alarm=r["alarms"][key]) for r in rows] if key else rows
     labels = np.concatenate([r["labels"] for r in rows])
     scores = np.concatenate([r["scores"] for r in rows])
+    finite = np.isfinite(scores)  # gated models: -inf where the gate is closed, ranked below every other step
+    scores = np.where(finite, scores, scores[finite].min() - 1 if finite.any() else 0.0)
     auroc = roc_auc_score(labels, scores) if 0 < labels.sum() < len(labels) else float("nan")
     # Time-matched AUROC: label-1 steps against success steps of the same time bin, weighted by pairs.
     steps = np.concatenate([r["steps"] for r in rows]) // args.bin

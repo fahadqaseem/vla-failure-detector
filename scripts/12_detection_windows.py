@@ -17,7 +17,7 @@ import numpy as np
 
 p = argparse.ArgumentParser()
 p.add_argument("--pred", required=True, help="folder with per_episode.json")
-p.add_argument("--models", nargs="+", default=["mlp", "combined", "mlp_reg", "combined_reg", "progress", "safe"])
+p.add_argument("--models", nargs="+", default=["mlp", "combined", "mlp_reg", "combined_reg", "gated_mlp", "gated_combined", "progress", "safe"])
 p.add_argument("--key", default="fixed 0.05", help="threshold mode and false-alarm limit (keys of 'alarms')")
 p.add_argument("--reference", default="safe")
 args = p.parse_args()
