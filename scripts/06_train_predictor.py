@@ -25,6 +25,11 @@ Models (same inputs, standardised with the training rows):
             window of the last 4 queries as averaged deltas (features_mean and action chunk minus their mean
             over the 3 previous queries; zero at the first query). Still no step index.
 
+  mlp_reg, combined_reg  regularised variants (Fahad, Oct 20): the 4096 VLA features (and, in combined_reg, their
+            averaged deltas) go through PCA to --pca_dims (128) fitted on the training rows only (deltas use the same
+            components, no centring); dropout 0.3 after the ReLU; early stopping on an inner validation split (20% of
+            the training episodes, failures with a t_pnr split separately), patience 30 epochs, best epoch kept.
+
   privileged diagnostic (Fahad, Oct 19; only with --privileged): same MLP and loss, but the inputs are
             simulator poses instead of VLA features (scripts/10_privileged_features.py: eef, fingers, gripper
             counter, goal object minus target and minus eef, goal predicates true now). Shows how far the
@@ -40,6 +45,13 @@ Two options for unseen tasks (Fahad, Oct 19; both change the inputs of every mod
 Leave-one-task-out: for each task, train on the other 9 and test on it.
 --split episode (diagnostic, Fahad Oct 19, "seen tasks"): instead hold out episodes, 5 folds by
 initial-state index (episode_idx % 5) within every task, so every task is seen in training.
+Thresholds, both from the cross-fitted scores of all training-group successes, at each false-alarm limit in --alphas
+(5%, 10%, 20%; the headline table uses --alpha):
+  fixed          one number: conformal quantile of the per-run maximum score.
+  time-varying   SAFE-style functional conformal band (Fahad, Oct 20): per 64-step bin, the mean and std of the
+                 success scores from half of the calibration runs; the other half gives c = conformal quantile of
+                 the per-run max of (score - mean(bin)) / std(bin); threshold(bin) = mean + c std. Bins with fewer
+                 than --min_runs_per_bin runs (successes rarely last long) reuse the last bin that has enough.
 Conformal threshold from ALL successes of the 9 training tasks. Their scores must come from a model that
 did not see their task (as at test time), so they are cross-fitted: for each training task u, a model
 trained on the other 8 tasks scores u's successes. Threshold = the ceil((n+1)(1-alpha))-th smallest
@@ -70,6 +82,7 @@ import os
 
 import numpy as np
 import torch
+from sklearn.decomposition import PCA
 from sklearn.metrics import roc_auc_score
 
 p = argparse.ArgumentParser()
@@ -78,7 +91,13 @@ p.add_argument("--episodes", nargs="+", default=["data/natural/*/*.npz"])
 p.add_argument("--prechecks", default=None, help="09_precheck.py results: failures marked recoverable get label 0")
 p.add_argument("--bin", type=int, default=64, help="time bin (steps) for the time-matched AUROC")
 p.add_argument("--tau_min_success", type=int, default=3, help="recoverable if >= this many of K=4 replays succeed (tau 0.5)")
-p.add_argument("--alpha", type=float, default=0.05, help="target false-alarm rate on successful runs")
+p.add_argument("--alpha", type=float, default=0.05, help="target false-alarm rate on successful runs (headline)")
+p.add_argument("--alphas", nargs="+", type=float, default=[0.05, 0.10, 0.20], help="false-alarm limits reported")
+p.add_argument("--min_runs_per_bin", type=int, default=20, help="time-varying threshold: runs needed in a bin")
+p.add_argument("--pca_dims", type=int, default=128, help="regularised models: PCA size of the VLA features")
+p.add_argument("--dropout", type=float, default=0.3, help="regularised models: dropout after the ReLU")
+p.add_argument("--val_frac", type=float, default=0.2, help="regularised models: inner validation episodes")
+p.add_argument("--patience", type=int, default=30, help="regularised models: epochs without validation gain")
 p.add_argument("--progress_m", type=float, default=0.01, help="eef move (m) between boundaries that counts as progress")
 p.add_argument("--epochs", type=int, default=300)
 p.add_argument("--lr", type=float, default=1e-3)
@@ -121,8 +140,8 @@ def steps_since_progress(eef_at_queries):
 
 def motion_and_window(eef_q, progress, feats, chunks, n=4):
     """Inputs added for the combined model, per query k (only queries k-3 .. k are used):
-    eef displacement since query k-3 (3) and its length (1), steps-since-progress (1),
-    features_mean and action chunk minus their mean over queries k-3 .. k-1 (zero at k = 0)."""
+    motion = eef displacement since query k-3 (3), its length (1), steps-since-progress (1);
+    dfeat, dchunk = features_mean and action chunk minus their mean over queries k-3 .. k-1 (zero at k = 0)."""
     disp, dfeat, dchunk = [], [], []
     for k in range(len(eef_q)):
         j = max(0, k - (n - 1))
@@ -131,8 +150,8 @@ def motion_and_window(eef_q, progress, feats, chunks, n=4):
         dfeat.append(feats[k] - feats[prev].mean(0))
         dchunk.append(chunks[k] - chunks[prev].mean(0))
     disp = np.array(disp)
-    return np.concatenate([disp, np.linalg.norm(disp, axis=1, keepdims=True), progress[:, None],
-                           np.array(dfeat), np.array(dchunk)], axis=1).astype(np.float32)
+    motion = np.concatenate([disp, np.linalg.norm(disp, axis=1, keepdims=True), progress[:, None]], axis=1)
+    return motion.astype(np.float32), np.array(dfeat, np.float32), np.array(dchunk, np.float32)
 
 
 # ---- load episodes ----
@@ -179,11 +198,13 @@ for f in files:
     if task_norm:
         mu_t, sd_t = task_norm[int(ep["task_id"])]
         feats = (feats - mu_t) / sd_t
-    x = np.concatenate([feats, chunks, ep["eef"][q], ep["query_grippers"]], axis=1).astype(np.float32)
+    x_rest = np.concatenate([chunks, ep["eef"][q], ep["query_grippers"]], axis=1).astype(np.float32)
     if task_embed is not None:
-        x = np.concatenate([x, np.tile(task_embed[int(ep["task_id"])], (len(q), 1))], axis=1)
+        x_rest = np.concatenate([x_rest, np.tile(task_embed[int(ep["task_id"])], (len(q), 1))], axis=1)
+    x = np.concatenate([feats, x_rest], axis=1)
     progress = steps_since_progress(ep["eef"][q])
-    x_comb = np.concatenate([x, motion_and_window(ep["eef"][q], progress, feats, chunks)], axis=1)
+    motion, dfeat, dchunk = motion_and_window(ep["eef"][q], progress, feats, chunks)
+    x_comb = np.concatenate([x, motion, dfeat, dchunk], axis=1)
     x_priv = np.load(os.path.join(args.privileged, eid + ".npz"))["x"] if args.privileged else None
     t_pnr = t_pnr_from_scan(scan) if scan else None
     pre_rec = eid in precheck_recoverable and not success and not scan  # label 0 everywhere, no risk target
@@ -196,6 +217,7 @@ for f in files:
     episodes.append(dict(eid=eid, task=int(ep["task_id"]), group=group, success=success, scanned=scan is not None or pre_rec,
                          source="perturbed" if "perturbed" in ep.files else "natural",
                          t_pnr=t_pnr, doomed=t_pnr == 0, steps=q, x=x, x_comb=x_comb, x_priv=x_priv, label=label, risk=risk,
+                         feat=feats, x_rest=x_rest, motion=motion, dfeat=dfeat, dchunk=dchunk,
                          progress=progress))
 
 labelled = [e for e in episodes if e["scanned"] or e["success"]]
@@ -212,13 +234,16 @@ print(f"{len(episodes)} natural episodes; labelled: {len(labelled)} "
 
 
 # ---- models ----
-def train(rows, model_name):
-    """rows: list of episodes. Returns a function: episode -> per-step score."""
-    torch.manual_seed(args.seed)
-    key = {"combined": "x_comb", "privileged": "x_priv"}.get(model_name, "x")
-    X = np.concatenate([e[key] for e in rows])
-    mu, sd = X.mean(0), X.std(0) + 1e-6
-    X = torch.tensor((X - mu) / sd)
+def reg_inputs(e, model_name, pca):
+    """Inputs of the regularised models: PCA of the VLA features, then the other inputs unchanged."""
+    parts = [pca.transform(e["feat"]), e["x_rest"]]
+    if model_name == "combined_reg":
+        parts += [e["motion"], e["dfeat"] @ pca.components_.T, e["dchunk"]]
+    return np.concatenate(parts, axis=1).astype(np.float32)
+
+
+def targets(rows, model_name):
+    """Label, risk (nan where not scanned) and weight per row."""
     if model_name == "safe":
         y = np.concatenate([np.full(len(e["steps"]), float(not e["success"]), np.float32) for e in rows])
         r = np.full_like(y, np.nan)
@@ -228,28 +253,80 @@ def train(rows, model_name):
     # Each episode weighs the same; then positives and negatives get the same total weight.
     w = np.concatenate([np.full(len(e["steps"]), 1 / len(e["steps"]), np.float32) for e in rows])
     w[y == 1] *= w[y == 0].sum() / max(w[y == 1].sum(), 1e-12)
-    w = torch.tensor(w / w.sum())
-    y, r = torch.tensor(y), torch.tensor(r)
+    return torch.tensor(y), torch.tensor(r), torch.tensor(w / w.sum())
+
+
+def loss_fn(logit, y, r, w):
+    loss = (w * torch.nn.functional.binary_cross_entropy_with_logits(logit, y, reduction="none")).sum()
     has_risk = ~torch.isnan(r)
+    if has_risk.any():
+        wr = w[has_risk] / w[has_risk].sum()
+        loss = loss + (wr * (torch.sigmoid(logit[has_risk]) - r[has_risk]) ** 2).sum()
+    return loss
+
+
+def train(rows, model_name):
+    """rows: list of episodes. Returns a function: episode -> per-step score."""
+    torch.manual_seed(args.seed)
+    regularised = model_name.endswith("_reg")
+    if regularised:
+        pca = PCA(args.pca_dims, random_state=args.seed).fit(np.concatenate([e["feat"] for e in rows]))
+        inputs = lambda e: reg_inputs(e, model_name, pca)  # noqa: E731
+    else:
+        key = {"combined": "x_comb", "privileged": "x_priv"}.get(model_name, "x")
+        inputs = lambda e: e[key]  # noqa: E731
+    X_all = np.concatenate([inputs(e) for e in rows])
+    mu, sd = X_all.mean(0), X_all.std(0) + 1e-6
+    tensor = lambda es: torch.tensor((np.concatenate([inputs(e) for e in es]) - mu) / sd)  # noqa: E731
+    fit_rows, val_rows = rows, []
+    if regularised:  # inner validation split by episode; episodes with label-1 steps are split separately
+        rng = np.random.default_rng(args.seed)
+        fit_rows = []
+        for group in ([e for e in rows if e["label"].any()], [e for e in rows if not e["label"].any()]):
+            order = rng.permutation(len(group))
+            n_val = int(round(args.val_frac * len(group)))
+            val_rows += [group[i] for i in order[:n_val]]
+            fit_rows += [group[i] for i in order[n_val:]]
+    X, (y, r, w) = tensor(fit_rows), targets(fit_rows, model_name)
     d = X.shape[1]
-    net = (torch.nn.Sequential(torch.nn.Linear(d, args.hidden), torch.nn.ReLU(), torch.nn.Linear(args.hidden, 1))
-           if model_name in ("mlp", "combined", "privileged") else torch.nn.Linear(d, 1))
+    if model_name in ("logreg", "safe"):
+        net = torch.nn.Linear(d, 1)
+    else:
+        layers = [torch.nn.Linear(d, args.hidden), torch.nn.ReLU()]
+        if regularised:
+            layers.append(torch.nn.Dropout(args.dropout))
+        net = torch.nn.Sequential(*layers, torch.nn.Linear(args.hidden, 1))
     opt = torch.optim.Adam(net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    for _ in range(args.epochs):  # full batch
-        logit = net(X).squeeze(1)
-        loss = (w * torch.nn.functional.binary_cross_entropy_with_logits(logit, y, reduction="none")).sum()
-        if has_risk.any():
-            wr = w[has_risk] / w[has_risk].sum()
-            loss = loss + (wr * (torch.sigmoid(logit[has_risk]) - r[has_risk]) ** 2).sum()
+    if val_rows:
+        X_val, (y_val, r_val, w_val) = tensor(val_rows), targets(val_rows, model_name)
+        best_loss, best_epoch, best_state = np.inf, 0, None
+    for epoch in range(args.epochs):  # full batch
+        net.train()
+        loss = loss_fn(net(X).squeeze(1), y, r, w)
         opt.zero_grad()
         loss.backward()
         opt.step()
+        if val_rows:
+            net.eval()
+            with torch.no_grad():
+                v = loss_fn(net(X_val).squeeze(1), y_val, r_val, w_val).item()
+            if v < best_loss:
+                best_loss, best_epoch = v, epoch
+                best_state = {k: t.clone() for k, t in net.state_dict().items()}
+            elif epoch - best_epoch >= args.patience:
+                break
+    if val_rows:
+        net.load_state_dict(best_state)
+        stopped_at.append(best_epoch + 1)
     net.eval()
 
     def score(e):
         with torch.no_grad():
-            return torch.sigmoid(net(torch.tensor((e[key] - mu) / sd)).squeeze(1)).numpy()
+            return torch.sigmoid(net(torch.tensor((inputs(e) - mu) / sd)).squeeze(1)).numpy()
     return score
+
+
+stopped_at = []  # best epoch of every regularised fit (reported in the summary)
 
 
 def fit(model_name, train_eps):
@@ -263,19 +340,55 @@ def fit(model_name, train_eps):
     return train([e for e in train_eps if e["scanned"] or e["success"]], model_name)
 
 
-def conformal_threshold(run_maxes):
+def conformal_threshold(run_maxes, alpha):
     n = len(run_maxes)
-    k = int(np.ceil((n + 1) * (1 - args.alpha)))
+    k = int(np.ceil((n + 1) * (1 - alpha)))
     return np.inf if k > n else float(np.sort(run_maxes)[k - 1])
 
 
+def fixed_threshold(calib, alpha):
+    """calib: list of (steps, scores) of calibration successes. Returns steps -> threshold per step."""
+    thr = conformal_threshold([s.max() for _, s in calib], alpha)
+    return lambda steps: np.full(len(steps), thr)
+
+
+def time_varying_threshold(calib, alpha):
+    """SAFE-style band: mean + c std per time bin (see the top of this file)."""
+    fit_half, cal_half = calib[0::2], calib[1::2]
+    n_bins = max(int(st.max()) for st, _ in calib) // args.bin + 1
+    mean, std = np.zeros(n_bins), np.ones(n_bins)
+    last_ok = 0
+    for b in range(n_bins):
+        in_bin = [s[st // args.bin == b] for st, s in fit_half if (st // args.bin == b).any()]
+        if len(in_bin) >= args.min_runs_per_bin:
+            v = np.concatenate(in_bin)
+            mean[b], std[b], last_ok = v.mean(), v.std() + 1e-6, b
+        else:
+            mean[b], std[b] = mean[last_ok], std[last_ok]
+    bins = lambda steps: np.minimum(np.asarray(steps) // args.bin, n_bins - 1)  # noqa: E731
+    # Bins past the calibration data reuse the last bin.
+    c = conformal_threshold([((s - mean[bins(st)]) / std[bins(st)]).max() for st, s in cal_half], alpha)
+    return lambda steps: mean[bins(steps)] + c * std[bins(steps)]
+
+
+THRESHOLDS = {"fixed": fixed_threshold, "time-varying": time_varying_threshold}
+
+
 def first_alarm(e, s, thr):
+    """thr: one threshold per step."""
     above = np.nonzero(s > thr)[0]
     return int(e["steps"][above[0]]) if len(above) else None
 
 
+def alarm_key(mode, alpha):
+    return f"{mode} {alpha:.2f}"
+
+
 # ---- leave-one-group-out: group = task (default), or episode fold (--split episode) ----
-models = ["timer", "progress", "safe", "logreg", "mlp", "combined"] + (["privileged"] if args.privileged else [])
+models = (["timer", "progress", "safe", "logreg", "mlp", "combined", "mlp_reg", "combined_reg"]
+          + (["privileged"] if args.privileged else []))
+alphas = sorted(set(args.alphas) | {args.alpha})
+headline = alarm_key("fixed", args.alpha)
 models = [m for m in models if args.models is None or m in args.models]
 rows_out = []  # one row per (model, held-out episode)
 groups = sorted({e["group"] for e in episodes})
@@ -285,22 +398,26 @@ for test_group in groups:
     test = [e for e in labelled if e["group"] == test_group]
     for m in models:
         # Calibration scores for each training group's successes, from a model that did not see that group.
-        calib_maxes = []
+        calib = []  # (steps, scores) of every training-group success
         for u in train_groups:
             score_u = fit(m, [e for e in train_eps if e["group"] != u])
-            calib_maxes += [score_u(e).max() for e in train_eps if e["group"] == u and e["success"]]
-        thr = conformal_threshold(calib_maxes)
+            calib += [(e["steps"], score_u(e)) for e in train_eps if e["group"] == u and e["success"]]
+        thresholds = {alarm_key(mode, a): make(calib, a) for mode, make in THRESHOLDS.items() for a in alphas}
         score = fit(m, train_eps)
         for e in test:
             s = score(e)
+            alarms = {k: first_alarm(e, s, thr(e["steps"])) for k, thr in thresholds.items()}
             rows_out.append(dict(model=m, task=e["task"], group=test_group, eid=e["eid"], success=e["success"], t_pnr=e["t_pnr"],
-                                 doomed=e["doomed"], t_alarm=first_alarm(e, s, thr), threshold=thr,
+                                 doomed=e["doomed"], t_alarm=alarms[headline], alarms=alarms,
+                                 threshold=float(thresholds[headline](e["steps"][:1])[0]),
                                  labels=e["label"].tolist(), scores=s.tolist(), steps=e["steps"].tolist()))
     print(f"held-out {args.split} group {test_group}: {len(train_eps)} training episodes, {len(test)} test episodes", flush=True)
 
 
 # ---- metrics ----
-def summarise(rows):
+def summarise(rows, key=None):
+    """key: which alarm (threshold mode and false-alarm limit); default the headline one."""
+    rows = [dict(r, t_alarm=r["alarms"][key]) for r in rows] if key else rows
     labels = np.concatenate([r["labels"] for r in rows])
     scores = np.concatenate([r["scores"] for r in rows])
     auroc = roc_auc_score(labels, scores) if 0 < labels.sum() < len(labels) else float("nan")
@@ -337,7 +454,7 @@ lines = ["# Per-step t_pnr predictor, " + ("leave-one-task-out" if args.split ==
          f"Labels: full replay scans, K 4, tau 0.5 (>= {args.tau_min_success} of 4 succeed = recoverable). "
          f"Scanned failures: {n_fail_lab}; doomed from start (t_pnr 0, left out of timing): "
          f"{sum(e['doomed'] for e in episodes)}. Training and test use all natural successes. "
-         f"Threshold: conformal, alpha {args.alpha}, from cross-fitted scores of all training-task successes. "
+         f"Threshold (headline table): fixed conformal, alpha {args.alpha}, from cross-fitted scores of all training-group successes. "
          f"epochs {args.epochs}, lr {args.lr}, weight decay {args.weight_decay}, hidden {args.hidden}, seed {args.seed}, "
          f"progress {args.progress_m} m."
          + (f" Task embedding appended: {args.task_embed}." if args.task_embed else "")
@@ -359,6 +476,20 @@ for m in models:
                  f"{s['auroc']:.3f} | {s['auroc_time_matched']:.3f} | {s['n_timed']} | {s['recall']:.2f} | "
                  f"{s['timely']} | {s['late']} | {s['missed']} | {s['median_lead']:.1f} | {s['mean_abs_err']:.1f} | "
                  f"{s['median_eta']:.2f} |")
+lines += ["", "Timely alarms (at or before t_pnr) / late / missed of the failures with t_pnr > 0, and false alarms on "
+          "successes, for each threshold and false-alarm limit:", "",
+          "| model | " + " | ".join(f"{mode} {a:.0%}" for mode in THRESHOLDS for a in alphas) + " |",
+          "|---|" + "---|" * (len(THRESHOLDS) * len(alphas))]
+for m in models:
+    cells = []
+    for mode in THRESHOLDS:
+        for a in alphas:
+            s = summarise([r for r in rows_out if r["model"] == m], alarm_key(mode, a))
+            cells.append(f"{s['timely']} / {s['late']} / {s['missed']}, FA {s['false_alarm']:.3f}")
+    lines.append(f"| {m} | " + " | ".join(cells) + " |")
+if stopped_at:
+    lines += ["", f"Regularised fits: best epoch median {int(np.median(stopped_at))}, range {min(stopped_at)} to "
+              f"{max(stopped_at)} ({len(stopped_at)} fits)."]
 lines += ["", "Labelled failures, per model: t_pnr -> t_alarm (lead time)", ""]
 for r in rows_out:
     if not r["success"]:
