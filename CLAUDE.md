@@ -66,6 +66,8 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
    (RESCUE: chunk boundaries since the eef last moved more than 0.01 m between successive boundaries).
    Combined model (Fahad, Oct 18 late): MLP on the inputs of 3. plus eef displacement over the last
    4 chunks, steps-since-progress and averaged deltas over the last 4 queries; no step index.
+   Gated rule (Fahad, Oct 20): `gated_mlp`, `gated_combined` = progress alarm (gate at its own 20% threshold) AND learned
+   risk above a threshold set on successes for 5% false alarms. Timely counts get bootstrap 95% intervals (`13_report.py`).
    Headline columns: unnecessary alarms on recoverable failures, and a time-matched AUROC (label-1 steps
    vs success steps in the same 64-step bin only), next to the whole-run AUROC.
 6. Unseen-task options (Fahad, Oct 19-20): `--task_embed` (instruction embedding, `11_task_embedding.py`) is under test;
