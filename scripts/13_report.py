@@ -29,9 +29,9 @@ lines = [f"# Timely alarms with bootstrap 95% intervals, threshold {args.key}", 
          "Timely = alarm at or before t_pnr, of the failures with t_pnr > 0 (interval: bootstrap over these failures, "
          f"{args.n_boot} draws). Window = t_alarm - t_pnr, median over alarmed failures (negative = before t_pnr). "
          f"vs {args.reference} = paired bootstrap interval of the difference in timely counts.", "",
-         f"| run | model | timely (95% interval) | vs {args.reference} | median window (alarmed) | false alarms on successes "
+         f"| run | model | timely (95% interval) | late / missed | vs {args.reference} | median window (alarmed) | false alarms on successes "
          "| unnecessary alarms on recoverable failures |",
-         "|---|---|---|---|---|---|---|"]
+         "|---|---|---|---|---|---|---|---|"]
 for pred in args.pred:
     rows = json.load(open(os.path.join(pred, "per_episode.json")))
     models = list(dict.fromkeys(r["model"] for r in rows))
@@ -45,6 +45,7 @@ for pred in args.pred:
         succ = [r for r in mine if r["success"]]
         recov = [r for r in mine if not r["success"] and r["t_pnr"] is None]
         window = [alarm[(m, eid)] - t for eid, t in timed if alarm[(m, eid)] is not None]
+        late, missed = sum(w > 0 for w in window), len(timed) - len(window)
         lo, hi = np.percentile(timely[m][draws].sum(1), [2.5, 97.5])
         if m == args.reference or args.reference not in timely:
             vs = ""
@@ -52,7 +53,7 @@ for pred in args.pred:
             d = timely[m][draws].sum(1) - timely[args.reference][draws].sum(1)
             d_lo, d_hi = np.percentile(d, [2.5, 97.5])
             vs = f"{int(timely[m].sum() - timely[args.reference].sum()):+d} ({d_lo:+.0f} to {d_hi:+.0f})"
-        lines.append(f"| {pred} | {m} | {int(timely[m].sum())} of {len(timed)} ({lo:.0f} to {hi:.0f}) | {vs} | "
+        lines.append(f"| {pred} | {m} | {int(timely[m].sum())} of {len(timed)} ({lo:.0f} to {hi:.0f}) | {late} / {missed} | {vs} | "
                      + (f"{np.median(window):+.0f} ({len(window)})" if window else "none") + " | "
                      f"{sum(r['alarms'][args.key] is not None for r in succ)} of {len(succ)} "
                      f"({np.mean([r['alarms'][args.key] is not None for r in succ]):.3f}) | "

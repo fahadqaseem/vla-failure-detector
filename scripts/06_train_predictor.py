@@ -35,6 +35,13 @@ Models (same inputs, standardised with the training rows):
             from the training successes); score = the model's risk where the gate is open, -inf elsewhere. The usual
             thresholds are then set on this score, so false alarms on successes stay at the limit (5%).
 
+  mlp_cusum, combined_cusum  rising-risk alarm (Fahad, Oct 22), no extra training: the same model's scores turned into a
+            one-sided CUSUM of the score changes with zero drift, S(t) = max(0, S(t-1) + s(t) - s(t-1)), which equals
+            s(t) minus the lowest score so far. Thresholds as for every model (5%: conformal on calibration successes).
+
+  --lead N  lead labels (Fahad, Oct 22): train with the label switching to 1 at t_pnr - N (not before step 0) instead of
+            at t_pnr. Only the training target changes; every metric still uses the true t_pnr and the usual labels.
+
   privileged diagnostic (Fahad, Oct 19; only with --privileged): same MLP and loss, but the inputs are
             simulator poses instead of VLA features (scripts/10_privileged_features.py: eef, fingers, gripper
             counter, goal object minus target and minus eef, goal predicates true now). Shows how far the
@@ -104,6 +111,7 @@ p.add_argument("--dropout", type=float, default=0.3, help="regularised models: d
 p.add_argument("--val_frac", type=float, default=0.2, help="regularised models: inner validation episodes")
 p.add_argument("--patience", type=int, default=30, help="regularised models: epochs without validation gain")
 p.add_argument("--gate_alpha", type=float, default=0.20, help="gated models: false-alarm limit of the progress gate")
+p.add_argument("--lead", type=int, default=0, help="train with label 1 from t_pnr - lead (metrics keep t_pnr)")
 p.add_argument("--progress_m", type=float, default=0.01, help="eef move (m) between boundaries that counts as progress")
 p.add_argument("--epochs", type=int, default=300)
 p.add_argument("--lr", type=float, default=1e-3)
@@ -215,6 +223,7 @@ for f in files:
     t_pnr = t_pnr_from_scan(scan) if scan else None
     pre_rec = eid in precheck_recoverable and not success and not scan  # label 0 everywhere, no risk target
     label = np.zeros(len(q), np.float32) if t_pnr is None else (q >= t_pnr).astype(np.float32)
+    train_label = label if t_pnr is None else (q >= t_pnr - args.lead).astype(np.float32)
     risk = np.full(len(q), np.nan, np.float32)
     if scan:
         by_step = {c: 1 - sum(s) / len(s) for c, s in zip(scan["checkpoints"], scan["successes"])}
@@ -222,7 +231,7 @@ for f in files:
     group = int(ep["task_id"]) if args.split == "task" else int(ep["episode_idx"]) % args.folds
     episodes.append(dict(eid=eid, task=int(ep["task_id"]), group=group, success=success, scanned=scan is not None or pre_rec,
                          source="perturbed" if "perturbed" in ep.files else "natural",
-                         t_pnr=t_pnr, doomed=t_pnr == 0, steps=q, x=x, x_comb=x_comb, x_priv=x_priv, label=label, risk=risk,
+                         t_pnr=t_pnr, doomed=t_pnr == 0, steps=q, x=x, x_comb=x_comb, x_priv=x_priv, label=label, train_label=train_label, risk=risk,
                          feat=feats, x_rest=x_rest, motion=motion, dfeat=dfeat, dchunk=dchunk,
                          progress=progress))
 
@@ -254,7 +263,7 @@ def targets(rows, model_name):
         y = np.concatenate([np.full(len(e["steps"]), float(not e["success"]), np.float32) for e in rows])
         r = np.full_like(y, np.nan)
     else:
-        y = np.concatenate([e["label"] for e in rows])
+        y = np.concatenate([e["train_label"] for e in rows])
         r = np.concatenate([e["risk"] for e in rows])
     # Each episode weighs the same; then positives and negatives get the same total weight.
     w = np.concatenate([np.full(len(e["steps"]), 1 / len(e["steps"]), np.float32) for e in rows])
@@ -346,7 +355,15 @@ def fit(model_name, train_eps):
     return fitted[key]
 
 
+def cusum(s):
+    """One-sided CUSUM of the score changes, zero drift: the score minus its lowest value so far."""
+    return (s - np.minimum.accumulate(s)).astype(np.float32)
+
+
 def fit_new(model_name, train_eps):
+    if model_name.endswith("_cusum"):
+        base = fit(model_name[:-len("_cusum")], train_eps)
+        return lambda e: cusum(base(e))
     if model_name.startswith("gated_"):
         risk = fit(model_name[len("gated_"):], train_eps)
         gate = conformal_threshold([e["progress"].max() for e in train_eps if e["success"]], args.gate_alpha)
@@ -406,7 +423,8 @@ def alarm_key(mode, alpha):
 
 
 # ---- leave-one-group-out: group = task (default), or episode fold (--split episode) ----
-models = (["timer", "progress", "safe", "logreg", "mlp", "combined", "mlp_reg", "combined_reg", "gated_mlp", "gated_combined"]
+models = (["timer", "progress", "safe", "logreg", "mlp", "combined", "mlp_reg", "combined_reg", "gated_mlp", "gated_combined",
+           "mlp_cusum", "combined_cusum"]
           + (["privileged"] if args.privileged else []))
 alphas = sorted(set(args.alphas) | {args.alpha})
 headline = alarm_key("fixed", args.alpha)
@@ -478,7 +496,7 @@ lines = ["# Per-step t_pnr predictor, " + ("leave-one-task-out" if args.split ==
          f"Scanned failures: {n_fail_lab}; doomed from start (t_pnr 0, left out of timing): "
          f"{sum(e['doomed'] for e in episodes)}. Training and test use all natural successes. "
          f"Threshold (headline table): fixed conformal, alpha {args.alpha}, from cross-fitted scores of all training-group successes. "
-         f"epochs {args.epochs}, lr {args.lr}, weight decay {args.weight_decay}, hidden {args.hidden}, seed {args.seed}, "
+         f"epochs {args.epochs}, lr {args.lr}, weight decay {args.weight_decay}, hidden {args.hidden}, seed {args.seed}, lead {args.lead} steps, "
          f"progress {args.progress_m} m."
          + (f" Task embedding appended: {args.task_embed}." if args.task_embed else "")
          + (f" Per-task normalisation of features_mean: first {args.task_norm_steps} steps of each task's successes."
