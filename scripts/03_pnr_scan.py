@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np  # noqa: E402
 
 from pnr.pnr import find_pnr  # noqa: E402
-from pnr.sim import CHUNK, DETERMINISTIC, REPLAY_START, Policy, make_task, max_steps, rollout  # noqa: E402
+from pnr.policy import CHUNK, DETERMINISTIC, REPLAY_START, Policy, make_task, max_steps, rollout  # noqa: E402
 
 p = argparse.ArgumentParser()
 p.add_argument("--episodes", default="data/rollouts/*.npz", help="glob of recorded episodes")

@@ -17,7 +17,8 @@ After 20 invalid attempts the initial state is skipped.
 
 import numpy as np
 
-from pnr.sim import MODEL_FAMILY, WAIT_STEPS, get_libero_dummy_action
+WAIT_STEPS = 10  # as pnr/sim.py and pnr/sim_pi.py
+NOOP = [0, 0, 0, 0, 0, 0, -1]  # LIBERO no-op action (same in openvla-oft and LeRobot), so no pnr.sim import
 
 SHIFT_M = (0.02, 0.03)
 MAX_YAW_DEG = 15.0
@@ -75,7 +76,7 @@ def settle(env, state):
     env.reset()
     env.set_init_state(state)
     for _ in range(WAIT_STEPS):
-        env.step(get_libero_dummy_action(MODEL_FAMILY))
+        env.step(NOOP)
     return _poses(env.env)
 
 

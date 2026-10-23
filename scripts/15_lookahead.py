@@ -68,7 +68,7 @@ if args.write_targets:
     sys.exit(0)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from pnr.sim import CHUNK, Policy, make_task, rollout  # noqa: E402
+from pnr.policy import CHUNK, Policy, make_task, rollout  # noqa: E402
 
 paths = [line.strip() for line in open(args.targets) if line.strip()][args.lines[0]:args.lines[0] + args.lines[1]]
 todo = [f for f in paths if not os.path.exists(os.path.join(args.out, os.path.splitext(os.path.basename(f))[0] + ".npz"))]

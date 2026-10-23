@@ -53,5 +53,16 @@ PLOT)
     python scripts/21_plot_physical.py --phys data/physical --out $W/physical_signals
     log "Track 1 visual check: 20_physical_signals.py -> data/physical; 21_plot_physical.py" "$W/physical_signals/summary.md, overview.png, one png per signal"
     ;;
+PI)
+    for D in $SETS; do
+        for split in unseen seen; do
+            Q="results/$P/${D}_${split}_mlp results/$P/${D}_${split}_gru results/$P/${D}_${split}_conv"
+            for k in "fixed 0.05" "fixed 0.025"; do
+                python scripts/13_report.py --pred $Q --key "$k" --headline "fixed 0.05" "fixed 0.025" --out "results/$P/report_${D}_${split}_${k// /_}.md"
+            done
+        done
+    done
+    log "Track 2 $P report: 13_report.py --headline on results/$P/{natural,all}_{unseen,seen}_*" "results/$P/report_natural_unseen_fixed_0.05.md (headline)"
+    ;;
 esac
 bash slurm/w2_push.sh "week2: phase $PHASE report"

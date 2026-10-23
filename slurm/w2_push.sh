@@ -6,8 +6,8 @@ cd "$SLURM_SUBMIT_DIR"
 LOCK=.git/w2_push.lock  # several jobs share this checkout: one git at a time (mkdir is atomic)
 for i in $(seq 1 120); do mkdir $LOCK 2>/dev/null && break; sleep 5; done
 trap 'rmdir $LOCK 2>/dev/null' EXIT
-find results/week2 -type f -size +50M -printf "too big, not committed: %p\n"
-git add $(find results/week2 -type f -size -50M) results/LOG.md 2>/dev/null
+find results/week2 results/pi0 results/pi05 -type f -size +50M 2>/dev/null -printf "too big, not committed: %p\n"
+git add $(find results/week2 results/pi0 results/pi05 -type f -size -50M 2>/dev/null) results/LOG.md 2>/dev/null
 git -c user.name="Fahad Qaseem Khawar" commit -qm "$MSG" || { echo "nothing to commit"; exit 0; }
 for try in 1 2; do
     git pull -q --rebase --autostash origin main && git push -q origin main && { echo "pushed: $MSG"; exit 0; }

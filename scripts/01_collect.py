@@ -19,7 +19,7 @@ import imageio  # noqa: E402
 import numpy as np  # noqa: E402
 
 from pnr.perturb import perturbed_start  # noqa: E402
-from pnr.sim import Policy, make_task, rollout, save_episode  # noqa: E402
+from pnr.policy import Policy, make_task, rollout, save_episode  # noqa: E402
 
 p = argparse.ArgumentParser()
 p.add_argument("--tasks", type=int, nargs="+", default=list(range(10)))

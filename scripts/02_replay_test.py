@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np  # noqa: E402
 
-from pnr.sim import Policy, make_task, restore_query, rollout  # noqa: E402
+from pnr.policy import Policy, make_task, restore_query, rollout  # noqa: E402
 
 p = argparse.ArgumentParser()
 p.add_argument("--episode", required=True)
