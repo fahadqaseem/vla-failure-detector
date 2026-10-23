@@ -3,11 +3,13 @@
 cd "$(dirname "$0")/.."
 echo "== $(date '+%F %H:%M') on $(hostname)"
 squeue -u $USER -h -o "%T %j" | grep -v VSCode | awk '{n[$1]++; j[$1]=j[$1]" "$2} END{for(s in n) printf "%s %d:%s\n", s, n[s], substr(j[s],1,110)}'
-F=$(sacct -S now-3days -X -n -o JobName%30,State | grep -E "w2-|pnr-" | grep -vE "COMPLETED|RUNNING|PENDING|CANCELLED" | awk '{print $1"("$2")"}' | sort | uniq -c | tr '\n' ' ')
+F=$(sacct -S now-3days -X -n -o JobName%30,State | grep -E "w2-|pnr-|t1-|t2-" | grep -vE "COMPLETED|RUNNING|PENDING|CANCELLED" | awk '{print $1"("$2")"}' | sort | uniq -c | tr '\n' ' ')
 echo "failed (3 days): ${F:-none}"
 n() { ls $1 2>/dev/null | wc -l; }
 echo "A: episodes $(n 'data/perturbed_v2/task*/*.npz') of 700, gate pass $(n 'data/perturbed_v2/task*/GATE_PASS') fail $(n 'data/perturbed_v2/task*/GATE_FAIL'), prechecks $(n 'data/perturbed_v2/prechecks/*.json'), scans $(n 'data/perturbed_v2_scans/*.json') of $(grep -c . results/week2/scans/targets.txt 2>/dev/null || echo '?'), refined $(n 'data/week2_refine/*.json') of $(grep -c . results/week2/refine/targets.txt 2>/dev/null || echo '?')"
 echo "B: lookahead $(n 'data/week2_lookahead/*.npz') of $(grep -c . results/week2/lookahead/targets.txt 2>/dev/null || echo '?'), mlp-scored $(n 'data/week2_lookahead_mlp/*.npz')"
+echo "T1: physical $(n 'data/physical/*.npz') of 843 episodes, T1 runs done $(n 'results/week2/T1_*/per_episode.json') of 6, report $( [ -f results/week2/T1_unseen_report_fixed_0.05.md ] && echo yes || echo no)"
+for P in pi0 pi05; do echo "T2 $P: env $( [ -x $HOME/envs/pi/bin/python ] && echo yes || echo no), feasibility $(cat results/$P/feasibility_status.txt 2>/dev/null || echo 'not run'), episodes $(n "data/$P/natural/*/*.npz"), scans $(n "data/$P/full_scans/*.json")"; done
 echo "results/week2: $(ls results/week2 2>/dev/null | grep -E 'report|best|changes' | tr '\n' ' ' | cut -c1-200)"
 [ -f results/week2/push_failures.txt ] && echo "PUSH FAILURES: $(wc -l < results/week2/push_failures.txt)"
 echo "git: $(git log --oneline -1 | cut -c1-60), unpushed $(git rev-list --count origin/main..HEAD 2>/dev/null)"
