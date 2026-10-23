@@ -58,6 +58,8 @@ with open(index_path, "a", newline="") as f:
             r = rollout(env, policy, desc, init_state=init, noise_std=args.noise_std, rng=rng,
                         save_frames=args.save_video)
             eid = f"t{task_id:02d}_e{ep:02d}_{'p' if args.perturb else 'n'}{args.noise_std:g}"
+            if args.perturb and args.seed:  # week 2 (Oct 23): new perturbation seeds get their own ids
+                eid += f"_s{args.seed}"
             save_episode(os.path.join(args.out, eid + ".npz"), r, task_id=task_id, episode_idx=ep,
                          description=desc, init_state=init, noise_std=args.noise_std, seed=args.seed, **extra)
             if args.save_video and r.frames:

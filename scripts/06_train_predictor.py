@@ -42,6 +42,20 @@ Models (same inputs, standardised with the training rows):
   --lead N  lead labels (Fahad, Oct 22): train with the label switching to 1 at t_pnr - N (not before step 0) instead of
             at t_pnr. Only the training target changes; every metric still uses the true t_pnr and the usual labels.
 
+  Week 2 Phase C (Fahad, Oct 23, docs/PLAN_week2.md):
+  mlp_rescue, combined_rescue  same networks, loss = MSE only, between the sigmoid output and the replay risk
+            (1 - rescue fraction) at each query (scans are at every query); unscanned successes get risk 0.
+  gru, conv  memory over the last --window (8) queries: PCA --pca_dims of the VLA features (training rows) plus the
+            action chunk, eef and gripper per query; earlier windows repeat the first query. gru = GRU 64, last state
+            -> linear; conv = two 1D convolutions (64 channels, kernel 3, ReLU), mean over time -> linear.
+            Same labels and loss as mlp. All four also as _cusum.
+  --calib_source natural  thresholds from natural training successes only (default pooled: all training successes).
+  --refine DIR  extra replays at boundary checkpoints (15_refine_targets.py, K 12 more): counts are added and every
+            checkpoint is recoverable if the Jeffreys lower 0.25 quantile of its success rate is >= 0.5 (same as
+            3 of 4 when K is 4; 10 of 16 when K is 16).
+  --lookahead DIR  Phase B: for the mlp, also score the future rows of 15_lookahead.py files of each held-out
+            episode with the fold's model; written to --lookahead_out.
+
   privileged diagnostic (Fahad, Oct 19; only with --privileged): same MLP and loss, but the inputs are
             simulator poses instead of VLA features (scripts/10_privileged_features.py: eef, fingers, gripper
             counter, goal object minus target and minus eef, goal predicates true now). Shows how far the
@@ -95,12 +109,13 @@ import os
 import numpy as np
 import torch
 from sklearn.decomposition import PCA
+from scipy.stats import beta
 from sklearn.metrics import roc_auc_score
 
 p = argparse.ArgumentParser()
 p.add_argument("--scans", nargs="+", default=["data/full_scans/*.json"])
 p.add_argument("--episodes", nargs="+", default=["data/natural/*/*.npz"])
-p.add_argument("--prechecks", default=None, help="09_precheck.py results: failures marked recoverable get label 0")
+p.add_argument("--prechecks", nargs="+", default=None, help="09_precheck.py result dirs: failures marked recoverable get label 0")
 p.add_argument("--bin", type=int, default=64, help="time bin (steps) for the time-matched AUROC")
 p.add_argument("--tau_min_success", type=int, default=3, help="recoverable if >= this many of K=4 replays succeed (tau 0.5)")
 p.add_argument("--alpha", type=float, default=0.05, help="target false-alarm rate on successful runs (headline)")
@@ -111,6 +126,11 @@ p.add_argument("--dropout", type=float, default=0.3, help="regularised models: d
 p.add_argument("--val_frac", type=float, default=0.2, help="regularised models: inner validation episodes")
 p.add_argument("--patience", type=int, default=30, help="regularised models: epochs without validation gain")
 p.add_argument("--gate_alpha", type=float, default=0.20, help="gated models: false-alarm limit of the progress gate")
+p.add_argument("--window", type=int, default=8, help="gru / conv: queries in the memory window")
+p.add_argument("--calib_source", choices=["pooled", "natural"], default="pooled", help="successes used for thresholds")
+p.add_argument("--refine", default=None, help="dir of K 12 boundary replays (03_pnr_scan.py JSONs) added to the scans")
+p.add_argument("--lookahead", default=None, help="dir of 15_lookahead.py files: score their future rows with the mlp")
+p.add_argument("--lookahead_out", default=None)
 p.add_argument("--lead", type=int, default=0, help="train with label 1 from t_pnr - lead (metrics keep t_pnr)")
 p.add_argument("--progress_m", type=float, default=0.01, help="eef move (m) between boundaries that counts as progress")
 p.add_argument("--epochs", type=int, default=300)
@@ -132,8 +152,13 @@ args = p.parse_args()
 
 def t_pnr_from_scan(scan):
     """First checkpoint from which every later checkpoint is not recoverable (None if the last one is)."""
-    assert scan["params"]["K"] == 4, "tau_min_success assumes K = 4"
-    ok = [sum(s) >= args.tau_min_success for s in scan["successes"]]
+    if args.refine:  # Jeffreys rule on the added counts (same as tau_min_success of 4 where nothing was added)
+        n = [len(s) for s in scan["successes"]]
+        ok = [beta.ppf(0.25, sum(s) + 0.5, len(s) - sum(s) + 0.5) >= 0.5 for s in scan["successes"]]
+        assert args.tau_min_success == 3 and all(k == 4 or k == 16 for k in n)
+    else:
+        assert scan["params"]["K"] == 4, "tau_min_success assumes K = 4"
+        ok = [sum(s) >= args.tau_min_success for s in scan["successes"]]
     if ok[-1]:
         return None
     i = len(ok) - 1
@@ -173,9 +198,18 @@ scans = {}
 for f in [f for pat in args.scans for f in glob.glob(pat)]:
     s = json.load(open(f))
     scans[s["episode_id"]] = s
+if args.refine:  # add the boundary replays to the matching checkpoints
+    n_refined = 0
+    for f in glob.glob(os.path.join(args.refine, "*.json")):
+        r = json.load(open(f))
+        s = scans[r["episode_id"]]
+        for c, extra in zip(r["checkpoints"], r["successes"]):
+            s["successes"][s["checkpoints"].index(c)] = list(s["successes"][s["checkpoints"].index(c)]) + list(extra)
+        n_refined += 1
+    print(f"refined (K 16 at the boundary): {n_refined} episodes")
 precheck_recoverable = set()
 if args.prechecks:
-    for f in glob.glob(os.path.join(args.prechecks, "*.json")):
+    for f in [f for d in args.prechecks for f in glob.glob(os.path.join(d, "*.json"))]:
         pc = json.load(open(f))
         if pc["verdict"] == "recoverable (pre-check)":
             precheck_recoverable.add(pc["episode_id"])
@@ -257,6 +291,31 @@ def reg_inputs(e, model_name, pca):
     return np.concatenate(parts, axis=1).astype(np.float32)
 
 
+def windows(X, n):
+    """(n_queries, d) -> (n_queries, n, d): the last n queries at each query, earlier ones repeat the first."""
+    idx = np.maximum(np.arange(len(X))[:, None] - np.arange(n - 1, -1, -1)[None, :], 0)
+    return X[idx]
+
+
+class SeqNet(torch.nn.Module):
+    """gru: GRU over the window, last state -> linear. conv: two 1D convolutions, mean over time -> linear."""
+
+    def __init__(self, kind, d, h=64):
+        super().__init__()
+        self.kind = kind
+        if kind == "gru":
+            self.rnn = torch.nn.GRU(d, h, batch_first=True)
+        else:
+            self.conv = torch.nn.Sequential(torch.nn.Conv1d(d, h, 3, padding=1), torch.nn.ReLU(),
+                                            torch.nn.Conv1d(h, h, 3, padding=1), torch.nn.ReLU())
+        self.out = torch.nn.Linear(h, 1)
+
+    def forward(self, x):  # x: (batch, window, d)
+        if self.kind == "gru":
+            return self.out(self.rnn(x)[1][-1])
+        return self.out(self.conv(x.transpose(1, 2)).mean(2))
+
+
 def targets(rows, model_name):
     """Label, risk (nan where not scanned) and weight per row."""
     if model_name == "safe":
@@ -265,14 +324,16 @@ def targets(rows, model_name):
     else:
         y = np.concatenate([e["train_label"] for e in rows])
         r = np.concatenate([e["risk"] for e in rows])
+        if model_name.endswith("_rescue"):  # unscanned successes: risk 0
+            r = np.concatenate([np.where(np.isnan(e["risk"]) & e["success"], 0.0, e["risk"]).astype(np.float32) for e in rows])
     # Each episode weighs the same; then positives and negatives get the same total weight.
     w = np.concatenate([np.full(len(e["steps"]), 1 / len(e["steps"]), np.float32) for e in rows])
     w[y == 1] *= w[y == 0].sum() / max(w[y == 1].sum(), 1e-12)
     return torch.tensor(y), torch.tensor(r), torch.tensor(w / w.sum())
 
 
-def loss_fn(logit, y, r, w):
-    loss = (w * torch.nn.functional.binary_cross_entropy_with_logits(logit, y, reduction="none")).sum()
+def loss_fn(logit, y, r, w, mse_only=False):
+    loss = 0.0 if mse_only else (w * torch.nn.functional.binary_cross_entropy_with_logits(logit, y, reduction="none")).sum()
     has_risk = ~torch.isnan(r)
     if has_risk.any():
         wr = w[has_risk] / w[has_risk].sum()
@@ -284,14 +345,21 @@ def train(rows, model_name):
     """rows: list of episodes. Returns a function: episode -> per-step score."""
     torch.manual_seed(args.seed)
     regularised = model_name.endswith("_reg")
-    if regularised:
+    seq = model_name in ("gru", "conv")
+    rescue = model_name.endswith("_rescue")
+    if seq:
+        pca = PCA(args.pca_dims, random_state=args.seed).fit(np.concatenate([e["feat"] for e in rows]))
+        inputs = lambda e: windows(np.concatenate([pca.transform(e["feat"]), e["x_rest"]], 1).astype(np.float32), args.window)  # noqa: E731
+    elif regularised:
         pca = PCA(args.pca_dims, random_state=args.seed).fit(np.concatenate([e["feat"] for e in rows]))
         inputs = lambda e: reg_inputs(e, model_name, pca)  # noqa: E731
     else:
-        key = {"combined": "x_comb", "privileged": "x_priv"}.get(model_name, "x")
+        key = {"combined": "x_comb", "combined_rescue": "x_comb", "privileged": "x_priv"}.get(model_name, "x")
         inputs = lambda e: e[key]  # noqa: E731
     X_all = np.concatenate([inputs(e) for e in rows])
-    mu, sd = X_all.mean(0), X_all.std(0) + 1e-6
+    X_flat = X_all.reshape(-1, X_all.shape[-1])
+    mu, sd = X_flat.mean(0), X_flat.std(0) + 1e-6
+    del X_all, X_flat
     tensor = lambda es: torch.tensor((np.concatenate([inputs(e) for e in es]) - mu) / sd)  # noqa: E731
     fit_rows, val_rows = rows, []
     if regularised:  # inner validation split by episode; episodes with label-1 steps are split separately
@@ -303,8 +371,10 @@ def train(rows, model_name):
             val_rows += [group[i] for i in order[:n_val]]
             fit_rows += [group[i] for i in order[n_val:]]
     X, (y, r, w) = tensor(fit_rows), targets(fit_rows, model_name)
-    d = X.shape[1]
-    if model_name in ("logreg", "safe"):
+    d = X.shape[-1]
+    if seq:
+        net = SeqNet(model_name, d)
+    elif model_name in ("logreg", "safe"):
         net = torch.nn.Linear(d, 1)
     else:
         layers = [torch.nn.Linear(d, args.hidden), torch.nn.ReLU()]
@@ -317,7 +387,7 @@ def train(rows, model_name):
         best_loss, best_epoch, best_state = np.inf, 0, None
     for epoch in range(args.epochs):  # full batch
         net.train()
-        loss = loss_fn(net(X).squeeze(1), y, r, w)
+        loss = loss_fn(net(X).squeeze(1), y, r, w, mse_only=rescue)
         opt.zero_grad()
         loss.backward()
         opt.step()
@@ -424,7 +494,8 @@ def alarm_key(mode, alpha):
 
 # ---- leave-one-group-out: group = task (default), or episode fold (--split episode) ----
 models = (["timer", "progress", "safe", "logreg", "mlp", "combined", "mlp_reg", "combined_reg", "gated_mlp", "gated_combined",
-           "mlp_cusum", "combined_cusum"]
+           "mlp_cusum", "combined_cusum", "mlp_rescue", "combined_rescue", "mlp_rescue_cusum", "combined_rescue_cusum",
+           "gru", "conv", "gru_cusum", "conv_cusum"]
           + (["privileged"] if args.privileged else []))
 alphas = sorted(set(args.alphas) | {args.alpha})
 headline = alarm_key("fixed", args.alpha)
@@ -440,16 +511,24 @@ for test_group in groups:
         calib = []  # (steps, scores) of every training-group success
         for u in train_groups:
             score_u = fit(m, [e for e in train_eps if e["group"] != u])
-            calib += [(e["steps"], score_u(e)) for e in train_eps if e["group"] == u and e["success"]]
+            calib += [(e["steps"], score_u(e)) for e in train_eps if e["group"] == u and e["success"]
+                      and (args.calib_source == "pooled" or e["source"] == "natural")]
         thresholds = {alarm_key(mode, a): make(calib, a) for mode, make in THRESHOLDS.items() for a in alphas}
         score = fit(m, train_eps)
         for e in test:
             s = score(e)
             alarms = {k: first_alarm(e, s, thr(e["steps"])) for k, thr in thresholds.items()}
-            rows_out.append(dict(model=m, task=e["task"], group=test_group, eid=e["eid"], success=e["success"], t_pnr=e["t_pnr"],
+            rows_out.append(dict(model=m, task=e["task"], group=test_group, eid=e["eid"], source=e["source"],
+                                 success=e["success"], t_pnr=e["t_pnr"],
                                  doomed=e["doomed"], t_alarm=alarms[headline], alarms=alarms,
                                  threshold=float(thresholds[headline](e["steps"][:1])[0]),
                                  labels=e["label"].tolist(), scores=s.tolist(), steps=e["steps"].tolist()))
+            la = os.path.join(args.lookahead or "", e["eid"] + ".npz")
+            if m == "mlp" and args.lookahead and os.path.exists(la):  # Phase B: mlp risk at the end of each future
+                fut = np.load(la)["x_future"].astype(np.float32)  # (checkpoints, futures, inputs)
+                risk = score({"x": fut.reshape(-1, fut.shape[-1])}).reshape(fut.shape[:2])
+                os.makedirs(args.lookahead_out, exist_ok=True)
+                np.savez(os.path.join(args.lookahead_out, e["eid"] + ".npz"), mlp_risk=risk)
     print(f"held-out {args.split} group {test_group}: {len(train_eps)} training episodes, {len(test)} test episodes", flush=True)
 
 

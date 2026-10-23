@@ -30,8 +30,8 @@ lines = [f"# Timely alarms with bootstrap 95% intervals, threshold {args.key}", 
          f"{args.n_boot} draws). Window = t_alarm - t_pnr, median over alarmed failures (negative = before t_pnr). "
          f"vs {args.reference} = paired bootstrap interval of the difference in timely counts.", "",
          f"| run | model | timely (95% interval) | late / missed | vs {args.reference} | median window (alarmed) | false alarms on successes "
-         "| unnecessary alarms on recoverable failures |",
-         "|---|---|---|---|---|---|---|---|"]
+         "| unnecessary alarms on recoverable failures | false alarms natural / perturbed successes |",
+         "|---|---|---|---|---|---|---|---|---|"]
 for pred in args.pred:
     rows = json.load(open(os.path.join(pred, "per_episode.json")))
     models = list(dict.fromkeys(r["model"] for r in rows))
@@ -57,7 +57,10 @@ for pred in args.pred:
                      + (f"{np.median(window):+.0f} ({len(window)})" if window else "none") + " | "
                      f"{sum(r['alarms'][args.key] is not None for r in succ)} of {len(succ)} "
                      f"({np.mean([r['alarms'][args.key] is not None for r in succ]):.3f}) | "
-                     f"{sum(r['alarms'][args.key] is not None for r in recov)} of {len(recov)} |")
+                     f"{sum(r['alarms'][args.key] is not None for r in recov)} of {len(recov)} | "
+                     + " / ".join(f"{np.mean([r['alarms'][args.key] is not None for r in ss]):.3f} of {len(ss)}" if ss else "none"
+                                  for ss in ([r for r in succ if "_p" not in r["eid"]], [r for r in succ if "_p" in r["eid"]]))
+                     + " |")
 text = "\n".join(lines) + "\n"
 out = args.out or os.path.join(args.pred[0], f"report_{args.key.replace(' ', '_')}.md")
 open(out, "w").write(text)
