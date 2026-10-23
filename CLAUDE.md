@@ -111,6 +111,17 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
   only 3.2 mm but the outcome flips). No pre-checks, scans or training on their perturbed episodes; every perturbed
   statistic says "7 of 10 tasks". `slurm/debug_t3_flip.sbatch` (low priority, after the perturbed scans) looks at t3. `slurm/replay_gate.sbatch` tests any list of episode:query pairs.
 
+### Meeting with Prof. Zhu, Oct 23, 2026 (details in docs/PLAN_week2.md, "After the Oct 23 meeting")
+
+- Replays NEVER shift objects: a replay restores the exact saved sim state and only adds action noise (0.05 on the
+  6 arm dims). The 2 to 3 cm object shift only changes the starting scene of NEW perturbed episodes.
+- Two headline metrics from now on, each at 5% and at 2.5% false positives: (1) episode-level false positive rate on
+  successes, (2) lead time before t_pnr (t_pnr - t_alarm). Other columns (timely / late / missed, unnecessary alarms,
+  bootstrap intervals) stay as secondary columns.
+- New direction: the VLA's internal features may not separate before / after t_pnr, so add physical state signals
+  (Track 1, `20_physical_signals.py`). Second policy family: Pi0 and Pi0.5 on LIBERO-10 (Track 2, results/pi0/, results/pi05/).
+  Goal: one method that works on 2 policies.
+
 ### Week 2 (Fahad, Oct 23, 2026; plan and every variant in docs/PLAN_week2.md)
 
 - Runs as Slurm chains submitted once by `slurm/w2_submit.sh`; report jobs commit and push `results/week2/`

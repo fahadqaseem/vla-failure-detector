@@ -73,3 +73,42 @@ detection window, bootstrap 95% intervals and difference from progress. Unseen t
 3. Phase B array (GPU, 1 slot), chained to the CPU scoring and its report.
 4. Each report job writes to results/week2/, then commits and pushes.
 Expected end: Phase C about Oct 24, B about Oct 24, A and D about Oct 25 to 26.
+
+## After the Oct 23 meeting with Prof. Zhu
+
+Phases A to D keep running unchanged. Feedback:
+- Replays never shift objects (exact restore + action noise 0.05); the 2 to 3 cm shift only makes new starting
+  scenes (written out in docs/HANDOFF.md).
+- Headline metrics from now on, at 5% and 2.5% false positives: (1) episode-level false positive rate on successes,
+  (2) lead time before t_pnr (t_pnr - t_alarm, median over alarmed failures; positive = early). New runs add
+  alpha 0.025 next to 0.05, 0.10, 0.20. `13_report.py --headline` prints both.
+
+### Track 1 (CPU): physical state signals on existing data (natural + perturbed, 7 of 10 tasks, pooled and said so)
+
+1. `20_physical_signals.py` (CPU, saved sim states, every query = 8 steps): for the goal objects of the task (the
+   objects in the BDDL goal; up to 2 placement slots and 1 articulation slot): gripper-to-object distance and its change
+   since the last query, object position, height above its start, lifted (more than 2 cm above its start), tilt from
+   upright, gripper-object contact, distance to the goal region; plus gripper opening and eef position. Distractor
+   objects are left out (fixed-size input across tasks). `21_plot_physical.py`: each signal from 200 steps before to
+   100 after t_pnr for the 46 timed failures, against one matched success per failure (same task) at the same
+   absolute steps; summary = per signal, AUROC failure vs matched success just before t_pnr (steps -64 to 0) and early
+   (-200 to -136). Output results/week2/physical_signals/.
+2. Models (all with and without CUSUM, unseen = headline and seen splits):
+   (a) physical only: `mlp_phys`, `gru_phys`, `conv_phys`;
+   (b) physical + VLA features (features_mean, action chunk, eef, gripper): `mlp_physvla`, `gru_physvla`, `conv_physvla`;
+   (c) (b) + motion signals (the combined model's extra inputs): `mlp_physall`, `gru_physall`, `conv_physall`.
+   gru / conv use PCA 128 of the VLA features as in Phase C. Old models (progress, mlp, combined, gru, conv) rerun in
+   the same jobs so the 2.5% column exists for them too.
+3. Report: the usual table plus the two headline metrics, every variant, bootstrap 95% intervals.
+
+### Track 2 (GPU): Pi0, then Pi0.5, on LIBERO-10
+
+1. Feasibility (stop and report if blocked): official LIBERO fine-tuned checkpoints (openpi or LeRobot ports),
+   running on Grid (CentOS 7, glibc 2.17; Apptainer container if pip wheels fail), success on 20 episodes per task
+   against the published numbers.
+2. Same pipeline per policy: 500 natural episodes (LIBERO init states), sim states every 8 steps, internal features
+   (SAFE's layer choice for Pi0), replay gate, full scans with the policy's own randomness (flow matching noise, new
+   seed per replay; no action noise unless replays are identical), K 4, tau 0.5, every 8 steps, 200 extra steps.
+3. Too few failures: add perturbed starting scenes as for OpenVLA-OFT, reported separately from natural.
+4. Same models as Track 1 per policy. Results in results/pi0/ and results/pi05/.
+GPU limit: at most 5 GPU jobs at once across everything; Phase A has priority.

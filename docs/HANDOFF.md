@@ -1,4 +1,18 @@
-# HANDOFF: start here (written Oct 17, 2026)
+# HANDOFF: start here (written Oct 17, 2026; top note Oct 23)
+
+## Replays never shift objects (Prof. Zhu meeting, Oct 23, 2026)
+
+Two different things use randomness, and only one of them moves objects:
+- Replays (full scans, pre-checks, the replay gate, look-ahead futures) restore the EXACT saved simulator state at a
+  chunk boundary (`pnr.sim.restore_query`) and run the policy again with Gaussian action noise 0.05 on the 6 arm
+  dims (gripper untouched). Objects are never moved. The replay gate checks that a no-noise replay reproduces the
+  recorded run.
+- Perturbed-natural episodes (`01_collect.py --perturb`) shift every movable object by 2 to 3 cm and rotate it up to
+  15 degrees ONCE, at the start of a NEW episode. This only creates new starting scenes, so we get more natural
+  failures. After that start, the episode and all its replays follow the rule above.
+For Pi0 / Pi0.5 (Track 2) the replays use the policy's own randomness (flow matching noise, new seed per replay)
+and no added action noise, unless those replays turn out identical.
+
 
 Claude Code: read this file, then CLAUDE.md, docs/PLAN.md and docs/GRID.md, and continue the work
 with Fahad. This file carries everything decided in the planning chat so far.
