@@ -56,6 +56,11 @@ Models (same inputs, standardised with the training rows):
   --lookahead DIR  Phase B: for the mlp, also score the future rows of 15_lookahead.py files of each held-out
             episode with the fold's model; written to --lookahead_out.
 
+  Track 1 (Prof. Zhu meeting, Oct 23): physical state inputs from 20_physical_signals.py (--phys DIR), for
+            arch in mlp, gru, conv: {arch}_phys = physical only; {arch}_physvla = physical + the mlp inputs (VLA features,
+            action chunk, eef, gripper; gru / conv use PCA of the VLA features as above); {arch}_physall = also the
+            combined model's motion inputs. All also as _cusum.
+
   privileged diagnostic (Fahad, Oct 19; only with --privileged): same MLP and loss, but the inputs are
             simulator poses instead of VLA features (scripts/10_privileged_features.py: eef, fingers, gripper
             counter, goal object minus target and minus eef, goal predicates true now). Shows how far the
@@ -126,6 +131,7 @@ p.add_argument("--dropout", type=float, default=0.3, help="regularised models: d
 p.add_argument("--val_frac", type=float, default=0.2, help="regularised models: inner validation episodes")
 p.add_argument("--patience", type=int, default=30, help="regularised models: epochs without validation gain")
 p.add_argument("--gate_alpha", type=float, default=0.20, help="gated models: false-alarm limit of the progress gate")
+p.add_argument("--phys", default=None, help="dir of 20_physical_signals.py outputs (Track 1 models)")
 p.add_argument("--window", type=int, default=8, help="gru / conv: queries in the memory window")
 p.add_argument("--calib_source", choices=["pooled", "natural"], default="pooled", help="successes used for thresholds")
 p.add_argument("--refine", default=None, help="dir of K 12 boundary replays (03_pnr_scan.py JSONs) added to the scans")
@@ -254,6 +260,8 @@ for f in files:
     motion, dfeat, dchunk = motion_and_window(ep["eef"][q], progress, feats, chunks)
     x_comb = np.concatenate([x, motion, dfeat, dchunk], axis=1)
     x_priv = np.load(os.path.join(args.privileged, eid + ".npz"))["x"] if args.privileged else None
+    phys = np.load(os.path.join(args.phys, eid + ".npz"))["x"].astype(np.float32) if args.phys else None
+    assert phys is None or len(phys) == len(q), eid
     t_pnr = t_pnr_from_scan(scan) if scan else None
     pre_rec = eid in precheck_recoverable and not success and not scan  # label 0 everywhere, no risk target
     label = np.zeros(len(q), np.float32) if t_pnr is None else (q >= t_pnr).astype(np.float32)
@@ -265,7 +273,7 @@ for f in files:
     group = int(ep["task_id"]) if args.split == "task" else int(ep["episode_idx"]) % args.folds
     episodes.append(dict(eid=eid, task=int(ep["task_id"]), group=group, success=success, scanned=scan is not None or pre_rec,
                          source="perturbed" if "perturbed" in ep.files else "natural",
-                         t_pnr=t_pnr, doomed=t_pnr == 0, steps=q, x=x, x_comb=x_comb, x_priv=x_priv, label=label, train_label=train_label, risk=risk,
+                         t_pnr=t_pnr, doomed=t_pnr == 0, steps=q, x=x, x_comb=x_comb, x_priv=x_priv, phys=phys, label=label, train_label=train_label, risk=risk,
                          feat=feats, x_rest=x_rest, motion=motion, dfeat=dfeat, dchunk=dchunk,
                          progress=progress))
 
@@ -345,11 +353,25 @@ def train(rows, model_name):
     """rows: list of episodes. Returns a function: episode -> per-step score."""
     torch.manual_seed(args.seed)
     regularised = model_name.endswith("_reg")
-    seq = model_name in ("gru", "conv")
+    arch, _, inp = model_name.partition("_")  # Track 1 names: arch_phys, arch_physvla, arch_physall
+    seq = arch in ("gru", "conv") and inp in ("", "phys", "physvla", "physall")
     rescue = model_name.endswith("_rescue")
-    if seq:
+    if seq and inp == "phys":
+        inputs = lambda e: windows(e["phys"], args.window)  # noqa: E731
+    elif seq:
         pca = PCA(args.pca_dims, random_state=args.seed).fit(np.concatenate([e["feat"] for e in rows]))
-        inputs = lambda e: windows(np.concatenate([pca.transform(e["feat"]), e["x_rest"]], 1).astype(np.float32), args.window)  # noqa: E731
+
+        def per_query(e):
+            parts = [pca.transform(e["feat"]), e["x_rest"]]
+            if inp == "physall":
+                parts += [e["motion"], e["dfeat"] @ pca.components_.T, e["dchunk"]]
+            if inp in ("physvla", "physall"):
+                parts.append(e["phys"])
+            return np.concatenate(parts, 1).astype(np.float32)
+        inputs = lambda e: windows(per_query(e), args.window)  # noqa: E731
+    elif inp in ("phys", "physvla", "physall"):  # mlp on physical inputs
+        key = {"phys": None, "physvla": "x", "physall": "x_comb"}[inp]
+        inputs = lambda e: e["phys"] if key is None else np.concatenate([e[key], e["phys"]], 1)  # noqa: E731
     elif regularised:
         pca = PCA(args.pca_dims, random_state=args.seed).fit(np.concatenate([e["feat"] for e in rows]))
         inputs = lambda e: reg_inputs(e, model_name, pca)  # noqa: E731
@@ -373,7 +395,7 @@ def train(rows, model_name):
     X, (y, r, w) = tensor(fit_rows), targets(fit_rows, model_name)
     d = X.shape[-1]
     if seq:
-        net = SeqNet(model_name, d)
+        net = SeqNet(arch, d)
     elif model_name in ("logreg", "safe"):
         net = torch.nn.Linear(d, 1)
     else:
@@ -489,13 +511,14 @@ def first_alarm(e, s, thr):
 
 
 def alarm_key(mode, alpha):
-    return f"{mode} {alpha:.2f}"
+    return f"{mode} {alpha:.2f}" if round(alpha, 2) == alpha else f"{mode} {alpha:.3f}"  # 0.05 -> 0.05, 0.025 -> 0.025
 
 
 # ---- leave-one-group-out: group = task (default), or episode fold (--split episode) ----
 models = (["timer", "progress", "safe", "logreg", "mlp", "combined", "mlp_reg", "combined_reg", "gated_mlp", "gated_combined",
            "mlp_cusum", "combined_cusum", "mlp_rescue", "combined_rescue", "mlp_rescue_cusum", "combined_rescue_cusum",
            "gru", "conv", "gru_cusum", "conv_cusum"]
+          + [f"{a}_{i}{c}" for a in ("mlp", "gru", "conv") for i in ("phys", "physvla", "physall") for c in ("", "_cusum")]
           + (["privileged"] if args.privileged else []))
 alphas = sorted(set(args.alphas) | {args.alpha})
 headline = alarm_key("fixed", args.alpha)
@@ -598,7 +621,7 @@ for m in models:
                  f"{s['median_eta']:.2f} |")
 lines += ["", "Timely alarms (at or before t_pnr) / late / missed of the failures with t_pnr > 0, and false alarms on "
           "successes, for each threshold and false-alarm limit:", "",
-          "| model | " + " | ".join(f"{mode} {a:.0%}" for mode in THRESHOLDS for a in alphas) + " |",
+          "| model | " + " | ".join(f"{mode} {a:.1%}" for mode in THRESHOLDS for a in alphas) + " |",
           "|---|" + "---|" * (len(THRESHOLDS) * len(alphas))]
 for m in models:
     cells = []

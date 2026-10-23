@@ -41,5 +41,17 @@ D)
         "data/perturbed_v2_scans/*.json" --refine data/week2_refine --out $W/refine_changes.md
     log "Phase D report: 13_report.py on $W/D_unseen (+ B_lookahead row, UPPER BOUND) and $W/D_seen" "$W/D_unseen_report_fixed_0.05.md (headline), D_seen_report_*"
     ;;
+T1)
+    P="$W/T1_unseen_mlp $W/T1_unseen_gru $W/T1_unseen_conv"; Q="$W/T1_seen_mlp $W/T1_seen_gru $W/T1_seen_conv"
+    for k in "fixed 0.05" "fixed 0.025"; do
+        python scripts/13_report.py --pred $P --key "$k" --headline "fixed 0.05" "fixed 0.025" --out "$W/T1_unseen_report_${k// /_}.md"
+        python scripts/13_report.py --pred $Q --key "$k" --headline "fixed 0.05" "fixed 0.025" --out "$W/T1_seen_report_${k// /_}.md"
+    done
+    log "Track 1 report (physical signals): 13_report.py --headline on $W/T1_*" "$W/T1_unseen_report_fixed_0.05.md (headline), T1_unseen_report_fixed_0.025.md, T1_seen_report_*, physical_signals/summary.md"
+    ;;
+PLOT)
+    python scripts/21_plot_physical.py --phys data/physical --out $W/physical_signals
+    log "Track 1 visual check: 20_physical_signals.py -> data/physical; 21_plot_physical.py" "$W/physical_signals/summary.md, overview.png, one png per signal"
+    ;;
 esac
 bash slurm/w2_push.sh "week2: phase $PHASE report"

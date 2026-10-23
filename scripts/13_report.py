@@ -22,6 +22,8 @@ p.add_argument("--key", default="fixed 0.05", help="threshold mode and false-ala
 p.add_argument("--reference", default="progress")
 p.add_argument("--n_boot", type=int, default=10000)
 p.add_argument("--seed", type=int, default=0)
+p.add_argument("--headline", nargs="+", default=None,
+               help="keys for the headline table first (Oct 23 meeting), e.g. 'fixed 0.05' 'fixed 0.025'")
 p.add_argument("--out", default=None, help="markdown file (default: report_{key}.md in the first --pred folder)")
 args = p.parse_args()
 
@@ -61,6 +63,29 @@ for pred in args.pred:
                      + " / ".join(f"{np.mean([r['alarms'][args.key] is not None for r in ss]):.3f} of {len(ss)}" if ss else "none"
                                   for ss in ([r for r in succ if "_p" not in r["eid"]], [r for r in succ if "_p" in r["eid"]]))
                      + " |")
+if args.headline:  # Oct 23 meeting: false positive rate on successes and lead time before t_pnr, per limit
+    head = ["# Headline: episode-level false positive rate on successes, and lead time before t_pnr", "",
+            "Lead = t_pnr - t_alarm (positive = alarm before t_pnr), median over the alarmed failures with t_pnr > 0 "
+            "(number alarmed in brackets); timely = lead >= 0, with bootstrap 95% interval.", "",
+            "| run | model | " + " | ".join(f"FPR {k} | lead {k} | timely {k}" for k in args.headline) + " |",
+            "|---|---|" + "---|---|---|" * len(args.headline)]
+    for pred in args.pred:
+        rows = json.load(open(os.path.join(pred, "per_episode.json")))
+        timed = [r for r in rows if not r["success"] and r["t_pnr"] not in (None, 0)]
+        for m in dict.fromkeys(r["model"] for r in rows):
+            cells = []
+            for k in args.headline:
+                succ = [r for r in rows if r["model"] == m and r["success"]]
+                mine = [r for r in timed if r["model"] == m]
+                lead = [r["t_pnr"] - r["alarms"][k] for r in mine if r["alarms"].get(k) is not None]
+                t = np.array([r["alarms"].get(k) is not None and r["alarms"][k] <= r["t_pnr"] for r in mine])
+                bs = np.random.default_rng(args.seed).integers(0, len(t), (args.n_boot, len(t))) if len(t) else None
+                lo, hi = np.percentile(t[bs].sum(1), [2.5, 97.5]) if len(t) else (0, 0)
+                fpr = np.mean([r["alarms"].get(k) is not None for r in succ]) if succ and k in succ[0]["alarms"] else np.nan
+                cells += [f"{fpr:.3f}", f"{np.median(lead):+.0f} ({len(lead)})" if lead else "none",
+                          f"{int(t.sum())} of {len(t)} ({lo:.0f} to {hi:.0f})"]
+            head.append(f"| {pred} | {m} | " + " | ".join(cells) + " |")
+    lines = head + [""] + lines
 text = "\n".join(lines) + "\n"
 out = args.out or os.path.join(args.pred[0], f"report_{args.key.replace(' ', '_')}.md")
 open(out, "w").write(text)
