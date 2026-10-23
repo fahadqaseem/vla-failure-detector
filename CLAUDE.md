@@ -111,6 +111,18 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
   only 3.2 mm but the outcome flips). No pre-checks, scans or training on their perturbed episodes; every perturbed
   statistic says "7 of 10 tasks". `slurm/debug_t3_flip.sbatch` (low priority, after the perturbed scans) looks at t3. `slurm/replay_gate.sbatch` tests any list of episode:query pairs.
 
+### Week 2 (Fahad, Oct 23, 2026; plan and every variant in docs/PLAN_week2.md)
+
+- Runs as Slurm chains submitted once by `slurm/w2_submit.sh`; report jobs commit and push `results/week2/`
+  themselves (`slurm/w2_push.sh`). `bash scripts/status.sh` = state in under 15 lines; start every session with it.
+- Phase A: 100 new perturbed episodes per task (tasks 0, 1, 4 to 8; seeds 1 and 2, ids `tXX_eYY_p0_s1`), data/perturbed_v2.
+  K 16 near the boundary, rule fixed Oct 23: if t_pnr - 8 has 3 of 4 or t_pnr has 2 of 4, both get 12 more replays
+  (seed 1); recoverable = Jeffreys lower 0.25 quantile >= 0.5 (10 of 16). Phase D uses these refined labels.
+- Phase B look-ahead (`15_lookahead.py`, `16_lookahead_alarm.py`) is an UPPER BOUND, never a detector: it uses
+  the simulator at test time.
+- Phase C models in 06: `mlp_rescue`, `combined_rescue` (MSE on the replay risk only), `gru`, `conv` (last 8 queries),
+  all also `_cusum`; `--calib_source natural|pooled`. Best per family by `17_pick_best.py` (rule in the plan).
+
 Cite: RESCUE (arXiv 2610.13516), PREFAIL (arXiv 2607.16921), CheckVLA (arXiv 2607.26789).
 
 The pilot (Oct 2 to Oct 16, Mac) measured `t_pnr` = 33 to 48 on one induced failure and found the
