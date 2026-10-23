@@ -29,9 +29,13 @@ B)
     log "Phase B report (UPPER BOUND, simulator at test time): 16_lookahead_alarm.py, 13_report.py" "$W/B_report_fixed_0.05.md"
     ;;
 D)
+    python scripts/19_completeness.py --out $W/D_completeness.md
     for k in "fixed 0.05" "fixed 0.10" "fixed 0.20"; do
         python scripts/13_report.py --pred $W/D_unseen $( [ -d $W/B_lookahead ] && echo $W/B_lookahead ) --key "$k" --out "$W/D_unseen_report_${k// /_}.md"
         python scripts/13_report.py --pred $W/D_seen --key "$k" --out "$W/D_seen_report_${k// /_}.md"
+        for f in "$W/D_unseen_report_${k// /_}.md" "$W/D_seen_report_${k// /_}.md"; do  # completeness at the top
+            cat $W/D_completeness.md "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+        done
     done
     python scripts/18_refine_changes.py --scans "data/full_scans/*.json" "data/perturbed_scans/*.json" \
         "data/perturbed_v2_scans/*.json" --refine data/week2_refine --out $W/refine_changes.md
