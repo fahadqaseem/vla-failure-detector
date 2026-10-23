@@ -41,6 +41,14 @@ def up_axis(quat_wxyz):
     return np.array([2 * (x * z + w * y), 2 * (y * z - w * x), 1 - 2 * (x * x + y * y)])
 
 
+def contact(e, robot, name):
+    """Gripper touches the object. Site objects (e.g. a stove's cook region) have no geoms: use their parent object."""
+    o = e.get_object(name)
+    if not hasattr(o, "contact_geoms") and hasattr(o, "parent_name"):
+        o = e.get_object(o.parent_name)
+    return float(hasattr(o, "contact_geoms") and e.check_contact(robot.gripper, o))
+
+
 suite = benchmark.get_benchmark_dict()["libero_10"]()
 os.makedirs(args.out, exist_ok=True)
 env, env_task = None, None
@@ -84,14 +92,14 @@ for n, f in enumerate(files):
             tilt = float(np.arccos(np.clip(up @ start[obj][1], -1, 1)))
             goal_dist = float(np.linalg.norm(pos - np.array(e.object_states_dict[target].get_geom_state()["pos"])))
             x += [dist, dist - prev.get(obj, dist), *pos, dz, float(dz > args.lift_m), tilt,
-                  float(e.check_contact(robot.gripper, e.get_object(obj))), goal_dist,
+                  contact(e, robot, obj), goal_dist,
                   float(e._eval_predicate(placements[slot])), 1.0]
             prev[obj] = dist
         if unary:
             obj = unary[0][1]
             pos = np.array(e.object_states_dict[obj].get_geom_state()["pos"])
             dist = float(np.linalg.norm(pos - eef))
-            x += [dist, dist - prev.get(obj, dist), float(e.check_contact(robot.gripper, e.get_object(obj))),
+            x += [dist, dist - prev.get(obj, dist), contact(e, robot, obj),
                   float(e._eval_predicate(unary[0])), 1.0]
             prev[obj] = dist
         else:
