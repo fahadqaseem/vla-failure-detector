@@ -30,6 +30,7 @@ pip install "datasets>=4.0.0,<5.0.0" "diffusers>=0.27.2,<0.36.0" "huggingface-hu
 pip install --no-deps "transformers @ git+https://github.com/huggingface/transformers.git@fix/lerobot_openpi" || exit 1
 pip install robosuite==1.4.1 mujoco==3.3.0 bddl==3.6.0 easydict==1.13 gym==0.26.2 "numpy<2" numba==0.60.0 llvmlite==0.43.0 --prefer-binary || exit 1
 pip install --force-reinstall --no-deps --only-binary=:all: pillow || exit 1
+pip install --only-binary=:all: "matplotlib<3.10" || exit 1   # LIBERO env_wrapper imports matplotlib (found Oct 24)
 pip install --no-deps --only-binary=:all: av==14.0.1 || exit 1   # lerobot imports av at import time; 14.0.1 is the last 2.17 wheel (we never decode video)
 pip check | head -20
 pip install -e $HOME/LIBERO --no-deps || exit 1
