@@ -1,0 +1,32 @@
+# Look-ahead signals (UPPER BOUND: uses the simulator at test time), threshold fixed 0.05
+
+- lookahead_nomove, held-out task 0: threshold 1.000 from 132 successes
+- lookahead_nomove, held-out task 1: threshold 1.000 from 133 successes
+- lookahead_nomove, held-out task 2: threshold 1.000 from 140 successes
+- lookahead_nomove, held-out task 3: threshold 1.000 from 140 successes
+- lookahead_nomove, held-out task 4: threshold 1.000 from 133 successes
+- lookahead_nomove, held-out task 5: threshold 1.000 from 133 successes
+- lookahead_nomove, held-out task 6: threshold 1.000 from 133 successes
+- lookahead_nomove, held-out task 7: threshold 1.000 from 133 successes
+- lookahead_nomove, held-out task 8: threshold 1.000 from 133 successes
+- lookahead_nomove, held-out task 9: threshold 1.000 from 140 successes
+- lookahead_mlp, held-out task 0: threshold 1.000 from 132 successes
+- lookahead_mlp, held-out task 1: threshold 0.928 from 133 successes
+- lookahead_mlp, held-out task 2: threshold 1.000 from 140 successes
+- lookahead_mlp, held-out task 3: threshold 1.000 from 140 successes
+- lookahead_mlp, held-out task 4: threshold 1.000 from 133 successes
+- lookahead_mlp, held-out task 5: threshold 1.000 from 133 successes
+- lookahead_mlp, held-out task 6: threshold 1.000 from 133 successes
+- lookahead_mlp, held-out task 7: threshold 1.000 from 133 successes
+- lookahead_mlp, held-out task 8: threshold 1.000 from 133 successes
+- lookahead_mlp, held-out task 9: threshold 1.000 from 140 successes
+- lookahead_nosucc, held-out task 0: threshold 1.000 from 132 successes
+- lookahead_nosucc, held-out task 1: threshold 1.000 from 133 successes
+- lookahead_nosucc, held-out task 2: threshold 1.000 from 140 successes
+- lookahead_nosucc, held-out task 3: threshold 1.000 from 140 successes
+- lookahead_nosucc, held-out task 4: threshold 1.000 from 133 successes
+- lookahead_nosucc, held-out task 5: threshold 1.000 from 133 successes
+- lookahead_nosucc, held-out task 6: threshold 1.000 from 133 successes
+- lookahead_nosucc, held-out task 7: threshold 1.000 from 133 successes
+- lookahead_nosucc, held-out task 8: threshold 1.000 from 133 successes
+- lookahead_nosucc, held-out task 9: threshold 1.000 from 140 successes
