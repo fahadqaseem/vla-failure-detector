@@ -49,6 +49,14 @@ T1)
     done
     log "Track 1 report (physical signals): 13_report.py --headline on $W/T1_*" "$W/T1_unseen_report_fixed_0.05.md (headline), T1_unseen_report_fixed_0.025.md, T1_seen_report_*, physical_signals/summary.md"
     ;;
+T1ALL)
+    P="$W/T1all_unseen_gru $W/T1all_unseen_conv"; Q="$W/T1all_seen_gru $W/T1all_seen_conv"
+    for k in "fixed 0.05" "fixed 0.025"; do
+        python scripts/13_report.py --pred $P --key "$k" --headline "fixed 0.05" "fixed 0.025" --out "$W/T1all_unseen_report_${k// /_}.md"
+        python scripts/13_report.py --pred $Q --key "$k" --headline "fixed 0.05" "fixed 0.025" --out "$W/T1all_seen_report_${k// /_}.md"
+    done
+    log "Track 1 on all data (natural + perturbed + perturbed_v2, refined labels): 13_report.py --headline on $W/T1all_*" "$W/T1all_unseen_report_fixed_0.05.md (headline), T1all_unseen_report_fixed_0.025.md, T1all_seen_report_*"
+    ;;
 PLOT)
     python scripts/21_plot_physical.py --phys data/physical --out $W/physical_signals
     log "Track 1 visual check: 20_physical_signals.py -> data/physical; 21_plot_physical.py" "$W/physical_signals/summary.md, overview.png, one png per signal"
