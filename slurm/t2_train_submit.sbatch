@@ -9,7 +9,7 @@
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=hr4625@wayne.edu
 # Track 2 for $P after the scans: physical signals, then the Track 1 models (unseen and seen, mlp / gru / conv),
-# natural only and, if perturbed episodes exist, natural + perturbed; report. After pi0, start the pi05 chain.
+# natural only and, if perturbed episodes exist, natural + perturbed; report.
 source slurm/common.sh
 X=$(sbatch --parsable -p mdtp -q primary -c 2 --mem 16G -t 12:00:00 -J t2-physical-$P -o logs/%x-%j.out     --wrap "source slurm/common.sh; python scripts/20_physical_signals.py --episodes 'data/$P/natural/*/*.npz' 'data/$P/perturbed/*/*.npz' --out data/$P/physical")
 A="--phys data/$P/physical --alphas 0.025 0.05 0.10 0.20"
@@ -23,5 +23,4 @@ for D in $SETS; do for split in unseen seen; do for arch in mlp gru conv; do
     IDS="$IDS:$(sbatch --parsable --dependency=afterok:$X -J t2-$P-$D-$split-$arch --export=ALL,P=$P,DATA=$D,NAME=${D}_${split}_$arch,ARGS="$A $SP --models ${!M}" slurm/t2_train.sbatch)"
 done; done; done
 sbatch --dependency=afterok$IDS --export=ALL,PHASE=PI,P=$P,SETS="$SETS" slurm/w2_report.sbatch
-[ "$P" = pi0 ] && bash slurm/t2_start.sh pi05
 true
