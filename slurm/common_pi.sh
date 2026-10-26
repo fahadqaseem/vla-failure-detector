@@ -4,6 +4,7 @@ export PYTHONPATH="$HOME/LIBERO:$SLURM_SUBMIT_DIR${PYTHONPATH:+:$PYTHONPATH}"
 export MUJOCO_GL=egl
 export PYOPENGL_PLATFORM=egl
 export CUBLAS_WORKSPACE_CONFIG=:4096:8
+export TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1  # torch 2.6: LIBERO init-state files (official repo) hold numpy arrays
 export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
 export PNR_POLICY=${PNR_POLICY:-pi0}
 cd "$SLURM_SUBMIT_DIR"
