@@ -1,0 +1,19 @@
+{
+ "policy": "pi0",
+ "checkpoint": "lerobot/pi0_libero_finetuned_v044",
+ "episode_success": false,
+ "episode_steps": 520,
+ "queries": 65,
+ "features_shape": [
+  65,
+  10,
+  1024
+ ],
+ "model_load_s": 85.7,
+ "episode_s": 33.0,
+ "s_per_query": 0.508,
+ "replay_same_seed_max_eef_dev_m": 0.00015598598999999602,
+ "replay_gate_pass_10mm": true,
+ "two_new_seeds_max_eef_diff_m": 0.1988453257767911,
+ "new_seeds_differ_1mm": true
+}
