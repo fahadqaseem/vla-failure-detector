@@ -32,7 +32,7 @@ from lerobot.processor.env_processor import LiberoProcessorStep
 KIND = os.environ.get("PNR_POLICY", "pi0")
 CHECKPOINT = {"pi0": "lerobot/pi0_libero_finetuned_v044", "pi05": "lerobot/pi05_libero_finetuned_v044"}[KIND]
 SUITE = "libero_10"
-CHUNK = 8
+CHUNK = int(os.environ.get("PNR_PI_STEPS", "8"))  # actions run per query; 8 = our checkpoints (25_pi_diag.py tries 5, 50)
 WAIT_STEPS = 10
 MAX_STEPS = 520  # lerobot TASK_SUITE_MAX_STEPS["libero_10"], same as openvla-oft
 DETERMINISTIC = os.environ.get("PNR_DETERMINISTIC", "1") == "1"
