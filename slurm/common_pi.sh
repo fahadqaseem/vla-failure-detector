@@ -5,6 +5,7 @@ export MUJOCO_GL=egl
 export PYOPENGL_PLATFORM=egl
 export CUBLAS_WORKSPACE_CONFIG=:4096:8
 export TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1  # torch 2.6: LIBERO init-state files (official repo) hold numpy arrays
+export TORCHDYNAMO_DISABLE=1  # no torch.compile (inductor gcc build fails on CentOS 7, Oct 26)
 export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
 export PNR_POLICY=${PNR_POLICY:-pi0}
 cd "$SLURM_SUBMIT_DIR"

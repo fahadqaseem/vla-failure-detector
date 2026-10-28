@@ -14,6 +14,7 @@
 # policy's own randomness (no action noise). KIND=natural (LIBERO init states) or perturbed (moved objects, seed 0).
 # GATE=1: replay gate on the task's first episode (query 1 and the middle query) -> GATE_PASS / GATE_FAIL.
 source slurm/common_pi.sh
+source slurm/t2_fail.sh
 T=$SLURM_ARRAY_TASK_ID
 D=data/$PNR_POLICY/${KIND:-natural}/task$(printf "%02d" $T)
 python scripts/01_collect.py --tasks $T --start_idx ${START:-0} --episodes ${N:-50} --noise_std 0     $( [ "$KIND" = perturbed ] && echo --perturb ) --out $D || exit 1

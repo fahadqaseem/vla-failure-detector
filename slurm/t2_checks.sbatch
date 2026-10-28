@@ -11,4 +11,5 @@
 #SBATCH --mail-user=hr4625@wayne.edu
 # Track 2: first checks for $PNR_POLICY (22_pi_checks.py: one episode, replay gate, do new flow seeds differ).
 source slurm/common_pi.sh
+source slurm/t2_fail.sh
 python scripts/22_pi_checks.py

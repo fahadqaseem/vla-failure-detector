@@ -11,6 +11,7 @@
 # Track 2 for $P after the scans: physical signals, then the Track 1 models (unseen and seen, mlp / gru / conv),
 # natural only and, if perturbed episodes exist, natural + perturbed; report.
 source slurm/common.sh
+source slurm/t2_fail.sh
 X=$(sbatch --parsable -p mdtp -q primary -c 2 --mem 16G -t 12:00:00 -J t2-physical-$P -o logs/%x-%j.out     --wrap "source slurm/common.sh; python scripts/20_physical_signals.py --episodes 'data/$P/natural/*/*.npz' 'data/$P/perturbed/*/*.npz' --out data/$P/physical")
 A="--phys data/$P/physical --alphas 0.025 0.05 0.10 0.20"
 M_mlp="progress mlp combined mlp_cusum combined_cusum mlp_phys mlp_physvla mlp_physall mlp_phys_cusum mlp_physvla_cusum mlp_physall_cusum"

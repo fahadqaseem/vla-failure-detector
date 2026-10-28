@@ -12,6 +12,7 @@
 #SBATCH --mail-user=hr4625@wayne.edu
 # Track 2 pre-check (09_precheck.py, no action noise) of one task's perturbed failures, if its replay gate passed.
 source slurm/common_pi.sh
+source slurm/t2_fail.sh
 D=data/$PNR_POLICY/perturbed/task$(printf "%02d" $SLURM_ARRAY_TASK_ID)
 [ -f $D/GATE_PASS ] || { echo "no GATE_PASS in $D"; exit 0; }
 python scripts/09_precheck.py --episodes "$D/*.npz" --noise_std 0 --out data/$PNR_POLICY/perturbed/prechecks

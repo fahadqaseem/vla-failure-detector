@@ -12,6 +12,7 @@
 # Track 2 full scans for $PNR_POLICY (one line of $TARGETS per array task): K 4, every 8 steps, tau 0.5, 200 extra
 # steps, the policy's own randomness (new flow seed per replay), no action noise (Oct 23). Output $OUT.
 source slurm/common_pi.sh
+source slurm/t2_fail.sh
 EP=$(sed -n "$((SLURM_ARRAY_TASK_ID + 1))p" "$TARGETS")
 [ -z "$EP" ] && { echo "no target"; exit 0; }
 [ -f "$OUT/$(basename "$EP" .npz).json" ] && { echo "already scanned: $EP"; exit 0; }

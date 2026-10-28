@@ -52,7 +52,10 @@ class Policy:
             from lerobot.policies.pi0.modeling_pi0 import PI0Policy as Cls
         else:
             from lerobot.policies.pi05.modeling_pi05 import PI05Policy as Cls
-        self.model = Cls.from_pretrained(CHECKPOINT).to("cuda").eval()
+        from lerobot.configs.policies import PreTrainedConfig
+        config = PreTrainedConfig.from_pretrained(CHECKPOINT)
+        config.compile_model = False  # the pi0 checkpoint sets true; torch.compile needs a gcc build that fails on Grid
+        self.model = Cls.from_pretrained(CHECKPOINT, config=config).to("cuda").eval()
         self.model.config.n_action_steps = CHUNK
         self.pre, self.post = make_pre_post_processors(self.model.config, pretrained_path=CHECKPOINT)
         self.env_step = PolicyProcessorPipeline(steps=[LiberoProcessorStep()])  # as make_env_pre_post_processors

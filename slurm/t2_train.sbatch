@@ -11,6 +11,7 @@
 # Track 2: one 06_train_predictor.py run on policy $P's data into results/$P/$NAME. DATA=natural or all (natural +
 # perturbed, pooled and said so in the summary). Extra flags in ARGS.
 source slurm/common.sh
+source slurm/t2_fail.sh
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 SCANS=("data/$P/full_scans/*.json"); EPS=("data/$P/natural/*/*.npz"); PRE=()
 if [ "$DATA" = all ]; then

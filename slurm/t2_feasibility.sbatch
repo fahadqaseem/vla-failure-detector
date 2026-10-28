@@ -11,7 +11,8 @@
 # Track 2 verdict for $P (23_pi_feasibility.py), pushed. PASS: collect the other 30 episodes per task with the replay
 # gate, then t2_after_collect; for pi0 also start pi05. FAIL: stop here (results/$P/feasibility.md says why).
 source slurm/common.sh
-python scripts/23_pi_feasibility.py --policy $P
+source slurm/t2_fail.sh
+python scripts/23_pi_feasibility.py --policy $P || exit 1
 C=$(git rev-parse --short HEAD)
 echo "| $(date +%F) | Track 2 $P feasibility: 22_pi_checks.py, 20 episodes per task (t2_collect), 23_pi_feasibility.py | $C | $(cat results/$P/feasibility_status.txt) | results/$P/feasibility.md, checks.json; job $SLURM_JOB_ID (auto) |" >> results/LOG.md
 git add results/$P 2>/dev/null

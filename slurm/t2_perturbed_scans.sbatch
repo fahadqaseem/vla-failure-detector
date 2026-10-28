@@ -10,8 +10,9 @@
 #SBATCH --mail-user=hr4625@wayne.edu
 # Track 2: full scans of the perturbed failures of $P whose pre-check says "scan", then training.
 source slurm/common.sh
+source slurm/t2_fail.sh
 T=results/$P/perturbed_scans/targets.txt
-python scripts/scan_targets.py --root data/$P/perturbed --n_success 0 --prechecks data/$P/perturbed/prechecks --require_gate --out $T
+python scripts/scan_targets.py --root data/$P/perturbed --n_success 0 --prechecks data/$P/perturbed/prechecks --require_gate --out $T || exit 1
 N=$(grep -c . $T)
 DEP=""
 if [ "$N" -gt 0 ]; then

@@ -12,8 +12,9 @@
 # successes per task. If fewer than 40 such failures (rule fixed Oct 23), perturbed starting scenes follow after the
 # natural scans (50 per task, seed 0, gate, pre-check, scans), reported separately. Then training (t2_train_submit).
 source slurm/common.sh
+source slurm/t2_fail.sh
 T=results/$P/natural_scans/targets.txt
-python scripts/scan_targets.py --root data/$P/natural --n_success 2 --require_gate --out $T
+python scripts/scan_targets.py --root data/$P/natural --n_success 2 --require_gate --out $T || exit 1
 NF=$(python -c "import csv,glob,os; print(sum(int(r['success'])==0 for f in glob.glob('data/$P/natural/task*/index.csv') if os.path.exists(os.path.join(os.path.dirname(f),'GATE_PASS')) for r in csv.DictReader(open(f))))")
 N=$(grep -c . $T)
 echo "$P: $NF natural failures in gate-passed tasks, $N scan targets"
