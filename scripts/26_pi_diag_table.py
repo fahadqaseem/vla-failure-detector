@@ -17,7 +17,11 @@ rows = []
 for f in sorted(glob.glob(os.path.join(args.dir, "lerobot_eval*/eval_info.json"))):
     info = json.load(open(f))
     tasks = {str(t["task_id"]): [bool(s) for s in t["metrics"]["successes"]] for t in info["per_task"]}
-    rows.append(("lerobot-eval, default settings (50 steps per query, 360 px)", tasks))
+    env = os.path.basename(os.path.dirname(f))[len("lerobot_eval"):].lstrip("_") or "pi"
+    env = {"pi": "our env (LIBERO repo, robosuite 1.4.1, mujoco 3.3.0)",
+           "pi_hf": "LeRobot docs env (hf-libero 0.1.4, robosuite 1.4.0, mujoco 3.3.0)",
+           "pi_hf237": "LeRobot docs env with mujoco 2.3.7"}.get(env, env)
+    rows.append((f"lerobot-eval default (50 steps, 360 px), {env}", tasks))
 for f in sorted(glob.glob(os.path.join(args.dir, "ours_*.json")), key=lambda f: int(f.split("_")[-1][:-5])):
     d = json.load(open(f))
     rows.append((d["setting"], d["tasks"]))
