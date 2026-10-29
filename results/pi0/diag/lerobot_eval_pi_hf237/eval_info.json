@@ -1,0 +1,172 @@
+{
+  "per_task": [
+    {
+      "task_group": "libero_10",
+      "task_id": 0,
+      "metrics": {
+        "sum_rewards": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rewards": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "successes": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "video_paths": [
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_0.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_1.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_2.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_3.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_4.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_5.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_6.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_7.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_8.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_9.mp4"
+        ]
+      }
+    },
+    {
+      "task_group": "libero_10",
+      "task_id": 8,
+      "metrics": {
+        "sum_rewards": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rewards": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "successes": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "video_paths": [
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_0.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_1.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_2.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_3.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_4.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_5.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_6.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_7.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_8.mp4",
+          "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_9.mp4"
+        ]
+      }
+    }
+  ],
+  "per_group": {
+    "libero_10": {
+      "avg_sum_reward": 0.0,
+      "avg_max_reward": 0.0,
+      "pc_success": 0.0,
+      "n_episodes": 20,
+      "video_paths": [
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_0.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_1.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_2.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_3.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_4.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_5.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_6.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_7.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_8.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_9.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_0.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_1.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_2.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_3.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_4.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_5.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_6.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_7.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_8.mp4",
+        "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_9.mp4"
+      ]
+    }
+  },
+  "overall": {
+    "avg_sum_reward": 0.0,
+    "avg_max_reward": 0.0,
+    "pc_success": 0.0,
+    "n_episodes": 20,
+    "eval_s": 280.70179057121277,
+    "eval_ep_s": 14.035089576244355,
+    "video_paths": [
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_0.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_1.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_2.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_3.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_4.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_5.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_6.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_7.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_8.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_0/eval_episode_9.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_0.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_1.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_2.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_3.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_4.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_5.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_6.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_7.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_8.mp4",
+      "results/pi0/diag/lerobot_eval_pi_hf237/videos/libero_10_8/eval_episode_9.mp4"
+    ]
+  }
+}
