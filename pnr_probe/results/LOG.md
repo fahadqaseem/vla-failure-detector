@@ -1,3 +1,4 @@
 | 2026-10-27 | bio precursor report: pnr_probe/slurm/submit.sh chain, 13_report.py + summary.py | eaa8a65 | pnr_probe/results/summary.md, pnr_probe/results/*_report_*.md | job 40801015 |
 | 2026-10-28 | dense replay report: pnr_probe/dense/submit.sh chain | 1c74f67 | pnr_probe/results/dense/summary.md, pnr_probe/results/dense/*_report_*.md | job 40833601 |
 | 2026-10-28 | dense_chunk gate: report.py --pass_only | 0a5203e | pnr_probe/results/dense_chunk/pass_rates.md, pnr_probe/results/dense_chunk/gate.txt | job 40859256: timed pass 0.9630 >= 0.90: submitted features  40859606 40859607 train  40859608 40859609 40859610 40859611 report 40859612 |
+| 2026-10-29 | dense report (pnr_probe/results/dense_chunk, replays pnr_probe/data/dense_chunk) | afe6e34 | pnr_probe/results/dense_chunk/summary.md, pnr_probe/results/dense_chunk/*_report_*.md | job 40859612 |
