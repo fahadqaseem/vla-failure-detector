@@ -25,6 +25,8 @@ p.add_argument("--labels", required=True)
 p.add_argument("--episodes", required=True)
 p.add_argument("--results", required=True)
 p.add_argument("--out", required=True)
+p.add_argument("--pass_only", action="store_true", help="only the pass-rate table (gate before training)")
+p.add_argument("--timed_rate_out", default=None, help="write the timed-failure pass rate (0 to 1) to this file")
 args = p.parse_args()
 
 lab = {r["eid"]: r for r in json.load(open(args.labels)) if r["model"] == "progress"}
@@ -64,6 +66,8 @@ if "timed failures" in stats and "successes" in stats:
                f"{pv:.3g}: no large gap (rule: more than 10 points lower, or p < 0.05).", ""]
 
 lines = ["# Dense replay features: summary", ""] + top
+if args.timed_rate_out and "timed failures" in stats:
+    open(args.timed_rate_out, "w").write(f"{stats['timed failures'][1] / stats['timed failures'][0]:.4f}\n")
 prim = None
 rep = os.path.join(args.results, "unseen_report_fixed_0.025.md")
 if os.path.exists(rep):
@@ -73,8 +77,11 @@ if os.path.exists(rep):
             prim = c
         if len(c) == 9 and c[0].endswith("unseen_b") and c[1] == "progress":
             prog = c
-lines += ["## Primary comparison: (b) gru_phys vs progress, unseen tasks, 2.5% false alarms", ""]
-if prim:
+if not args.pass_only:
+    lines += ["## Primary comparison: (b) gru_phys vs progress, unseen tasks, 2.5% false alarms", ""]
+if args.pass_only:
+    pass
+elif prim:
     lines += ["| model | timely (95% interval) | vs progress (paired 95% interval) | late / missed | median window | "
               "false alarms on successes | natural / perturbed |", "|---|---|---|---|---|---|---|",
               f"| (b) gru_phys | {prim[2]} | {prim[4]} | {prim[3]} | {prim[5]} | {prim[6]} | {prim[8]} |",

@@ -12,4 +12,4 @@ source slurm/common.sh
 export OMP_NUM_THREADS=2
 CHUNK=${CHUNK:-50}
 F=$(sed -n "$((SLURM_ARRAY_TASK_ID * CHUNK + 1)),$(((SLURM_ARRAY_TASK_ID + 1) * CHUNK))p" pnr_probe/dense/all_episodes.txt)
-python pnr_probe/dense/dense_replay.py --episodes $F --out pnr_probe/data/dense
+python pnr_probe/dense/${SCRIPT:-dense_replay.py} --episodes $F --out ${OUT:-pnr_probe/data/dense}

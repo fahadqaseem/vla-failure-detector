@@ -1,0 +1,4 @@
+/wsu/home/hr/hr46/hr4625/vla-failure-detector/data/natural/task08/t08_e27_n0.npz
+/wsu/home/hr/hr46/hr4625/vla-failure-detector/data/perturbed/task05/t05_e29_p0.npz
+/wsu/home/hr/hr46/hr4625/vla-failure-detector/data/perturbed/task00/t00_e13_p0.npz
+/wsu/home/hr/hr46/hr4625/vla-failure-detector/data/perturbed_v2/task00/t00_e06_p0_s1.npz
