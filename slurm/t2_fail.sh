@@ -5,7 +5,7 @@ t2_fail() {
     rc=$?; [ $rc = 0 ] && return
     LOGF=$(scontrol show job $SLURM_JOB_ID | grep -o 'StdOut=[^ ]*' | cut -d= -f2)
     [ -f "$LOGF" ] || LOGF=logs/$SLURM_JOB_NAME-$SLURM_JOB_ID.out
-    ERR=$(grep -E 'Error|error:|Exception|Traceback|FAILED' "$LOGF" 2>/dev/null | grep -vE "^ *(File|raise|ret)" | grep -vE 'EGL|Exception ignored|[Ww]arn' | tail -1 | cut -c1-300)
+    ERR=$(grep -E 'Error|error:|Exception|Traceback|FAILED|not found' "$LOGF" 2>/dev/null | grep -vE "^ *(File|raise|ret)" | grep -vE 'EGL|Exception ignored|[Ww]arn' | tail -1 | cut -c1-300)
     mkdir -p results/$T2_POL
     ID=${SLURM_ARRAY_JOB_ID:+${SLURM_ARRAY_JOB_ID}_$SLURM_ARRAY_TASK_ID}
     { echo "- job $SLURM_JOB_NAME ${ID:-$SLURM_JOB_ID} (exit $rc), log $LOGF"

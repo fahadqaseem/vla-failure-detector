@@ -26,7 +26,7 @@ for f in sorted(glob.glob(os.path.join(args.dir, "ours_*.json")), key=lambda f: 
     d = json.load(open(f))
     rows.append((d["setting"], d["tasks"]))
 ids = sorted({t for _, tasks in rows for t in tasks}, key=int)
-lines = ["# pi0 diagnosis: success on tasks " + ", ".join(ids) + " (initial states 0 to 9)", "",
+lines = [f"# {os.path.basename(os.path.dirname(os.path.abspath(args.dir)))} diagnosis: success on tasks " + ", ".join(ids) + " (initial states 0 to 9)", "",
          "| setting | " + " | ".join(f"task {t}" for t in ids) + " | overall |", "|---" * (len(ids) + 2) + "|"]
 for name, tasks in rows:
     cells = [f"{sum(tasks[t])}/{len(tasks[t])}" if t in tasks else "-" for t in ids]

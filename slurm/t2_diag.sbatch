@@ -17,7 +17,7 @@ D=results/$PNR_POLICY/diag
 if [ "$MODE" = lerobot ]; then
     O=$D/lerobot_eval_${PI_ENV:-pi}
     rm -rf $O
-    lerobot-eval --policy.path=$( [ $PNR_POLICY = pi0 ] && echo lerobot/pi0_libero_finetuned_v044 || echo lerobot/pi05_libero_finetuned_v044 ) \
+    python -m lerobot.scripts.lerobot_eval --policy.path=$( [ $PNR_POLICY = pi0 ] && echo lerobot/pi0_libero_finetuned_v044 || echo lerobot/pi05_libero_finetuned_v044 ) \
         --policy.compile_model=false --policy.device=cuda --env.type=libero --env.task=libero_10 --env.task_ids='[0,8]' \
         --eval.batch_size=1 --eval.n_episodes=10 --output_dir=$O || exit 1
     find $O -name "*.mp4" -delete
