@@ -48,8 +48,8 @@ from libero.libero import benchmark, get_libero_path
 from libero.libero.envs.env_wrapper import ControlEnv
 
 p = argparse.ArgumentParser()
-p.add_argument("--episodes", default="data/natural/*/*.npz")
-p.add_argument("--scans", default="data/full_scans/*.json")
+p.add_argument("--episodes", nargs="+", default=["data/natural/*/*.npz"])
+p.add_argument("--scans", nargs="+", default=["data/full_scans/*.json"])
 p.add_argument("--out", default="results/auto_onset.csv")
 p.add_argument("--closed_width", type=float, default=0.005, help="finger opening (m) below which the gripper is fully closed")
 p.add_argument("--lift_dz", type=float, default=0.03, help="rise (m) above the step-0 height that counts as lifted")
@@ -163,14 +163,14 @@ def detect(ep):
 
 
 scans = {}
-for f in glob.glob(args.scans):
+for f in [f for pat in args.scans for f in glob.glob(pat)]:
     s = json.load(open(f))
     scans[s["episode_id"]] = s
 
 kinds = ["missed_grasp", "drop", "stuck", "wrong_object"]
 strict_kinds = ["missed_grasp", "drop", "wrong_object"]
 eps = []
-for f in sorted(glob.glob(args.episodes)):
+for f in sorted(f for pat in args.episodes for f in glob.glob(pat)):
     ep = np.load(f, allow_pickle=True)
     if bool(ep["induced"]):
         continue

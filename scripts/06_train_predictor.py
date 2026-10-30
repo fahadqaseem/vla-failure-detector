@@ -68,6 +68,14 @@ Models (same inputs, standardised with the training rows):
             t_on = argmax of s(t) - s(t-1), no gradient through t_on. Paper values for OpenVLA on LIBERO: AdamW lr 5e-4,
             weight decay 0.1, 300 epochs, batch 64 half failures, warmup 50, m_r 1, m_o 0.2, lambda 0.1.
 
+  Week 3 (Prof. Zhu meeting, Oct 30): --fail_thr 0.7 / 0.8 relabels. Regression, GRU on the physical signals, MSE only:
+  gru_phys_frac  target = replay failure fraction at each query (scans are at every query, so nothing is interpolated);
+            unscanned successes 0, pre-check failures masked. Alarm on the output.
+  gru_phys_ttp   target = 1 - min(steps until t_pnr, 200) / 200, 0 where there is no t_pnr. Alarm on the output.
+  gru_robot      robot state only: eef position, eef rotation (first two matrix columns), gripper opening (33_robot_state.py).
+  gru_robotobj1, gru_robotobj2  robot state + goal object positions with Gaussian noise 1 cm, 2 cm per axis and query, seeded
+            per episode, to mimic a real detector. Same labels and loss as gru_phys.
+
   privileged diagnostic (Fahad, Oct 19; only with --privileged): same MLP and loss, but the inputs are
             simulator poses instead of VLA features (scripts/10_privileged_features.py: eef, fingers, gripper
             counter, goal object minus target and minus eef, goal predicates true now). Shows how far the
@@ -117,6 +125,7 @@ import argparse
 import glob
 import json
 import os
+import zlib
 
 import numpy as np
 import torch
@@ -147,6 +156,8 @@ p.add_argument("--lookahead_out", default=None)
 p.add_argument("--hs_warmup", type=int, default=50, help="hideseek: epochs of L_inter alone")
 p.add_argument("--hs_margins", nargs=2, type=float, default=[1.0, 0.2], help="hideseek: m_r, m_o")
 p.add_argument("--hs_lambda", type=float, default=0.1, help="hideseek: weight of L_intra")
+p.add_argument("--fail_thr", type=float, default=None, help="t_pnr from the raw failure fraction (0.7, 0.8); default the tau 0.5 rule")
+p.add_argument("--robot", default=None, help="dir of 33_robot_state.py outputs (gru_robot, gru_robotobj1, gru_robotobj2)")
 p.add_argument("--only_group", type=int, default=None, help="run one held-out group only (Slurm array; 28_merge_groups.py joins them)")
 p.add_argument("--lead", type=int, default=0, help="train with label 1 from t_pnr - lead (metrics keep t_pnr)")
 p.add_argument("--progress_m", type=float, default=0.01, help="eef move (m) between boundaries that counts as progress")
@@ -167,9 +178,16 @@ p.add_argument("--out", default="results/predictor")
 args = p.parse_args()
 
 
+PHYS = ["obj1_dist", "obj1_ddist", "obj1_pos_x", "obj1_pos_y", "obj1_pos_z", "obj1_dz", "obj1_lifted", "obj1_tilt", "obj1_contact",
+        "obj1_goal_dist", "obj1_in_goal", "obj1_used", "obj2_dist", "obj2_ddist", "obj2_pos_x", "obj2_pos_y", "obj2_pos_z", "obj2_dz",
+        "obj2_lifted", "obj2_tilt", "obj2_contact", "obj2_goal_dist", "obj2_in_goal", "obj2_used"]  # first columns of data/physical
+
+
 def t_pnr_from_scan(scan):
     """First checkpoint from which every later checkpoint is not recoverable (None if the last one is)."""
-    if args.refine:  # Jeffreys rule on the added counts (same as tau_min_success of 4 where nothing was added)
+    if args.fail_thr is not None:  # Oct 30 meeting: not recoverable if the raw failure fraction is at least fail_thr
+        ok = [1 - sum(s) / len(s) < args.fail_thr for s in scan["successes"]]
+    elif args.refine:  # Jeffreys rule on the added counts (same as tau_min_success of 4 where nothing was added)
         n = [len(s) for s in scan["successes"]]
         ok = [beta.ppf(0.25, sum(s) + 0.5, len(s) - sum(s) + 0.5) >= 0.5 for s in scan["successes"]]
         assert args.tau_min_success == 3 and all(k == 4 or k == 16 for k in n)
@@ -273,6 +291,7 @@ for f in files:
     x_priv = np.load(os.path.join(args.privileged, eid + ".npz"))["x"] if args.privileged else None
     phys = np.load(os.path.join(args.phys, eid + ".npz"))["x"].astype(np.float32) if args.phys else None
     assert phys is None or len(phys) == len(q), eid
+    robot = np.load(os.path.join(args.robot, eid + ".npz"))["x"].astype(np.float32) if args.robot else None
     t_pnr = t_pnr_from_scan(scan) if scan else None
     pre_rec = eid in precheck_recoverable and not success and not scan  # label 0 everywhere, no risk target
     label = np.zeros(len(q), np.float32) if t_pnr is None else (q >= t_pnr).astype(np.float32)
@@ -281,11 +300,23 @@ for f in files:
     if scan:
         by_step = {c: 1 - sum(s) / len(s) for c, s in zip(scan["checkpoints"], scan["successes"])}
         risk = np.array([by_step.get(int(s), np.nan) for s in q], np.float32)
+    t_ttp = None if success else t_pnr
+    ttp = np.zeros(len(q), np.float32) if t_ttp is None else (1 - np.clip(t_ttp - q, 0, 200) / 200).astype(np.float32)
+    noisy = {}
+    if robot is not None:
+        rng = np.random.default_rng([zlib.crc32(eid.encode()), 7])
+        pos = [phys[:, [PHYS.index(f"obj{i}_pos_{a}") for a in "xyz"]] for i in (1, 2)]
+        used = [phys[:, [PHYS.index(f"obj{i}_used")]] for i in (1, 2)]
+        z = rng.normal(0.0, 1.0, (len(q), 6)).astype(np.float32)
+        for name, sigma in (("robotobj1", 0.01), ("robotobj2", 0.02)):
+            obj = np.concatenate(pos, 1) + sigma * z * np.repeat(np.concatenate(used, 1), 3, axis=1)
+            noisy[name] = np.concatenate([robot, obj.astype(np.float32)], 1)
+        noisy["robot"] = robot
     group = int(ep["task_id"]) if args.split == "task" else int(ep["episode_idx"]) % args.folds
     episodes.append(dict(eid=eid, task=int(ep["task_id"]), group=group, success=success, scanned=scan is not None or pre_rec,
                          source="perturbed" if "perturbed" in ep.files else "natural",
                          t_pnr=t_pnr, doomed=t_pnr == 0, steps=q, x=x, x_comb=x_comb, x_priv=x_priv, phys=phys, label=label, train_label=train_label, risk=risk,
-                         feat=feats, x_rest=x_rest, motion=motion, dfeat=dfeat, dchunk=dchunk,
+                         feat=feats, x_rest=x_rest, motion=motion, dfeat=dfeat, dchunk=dchunk, ttp=ttp, noisy=noisy,
                          progress=progress))
 
 labelled = [e for e in episodes if e["scanned"] or e["success"]]
@@ -343,7 +374,9 @@ def targets(rows, model_name):
     else:
         y = np.concatenate([e["train_label"] for e in rows])
         r = np.concatenate([e["risk"] for e in rows])
-        if model_name.endswith("_rescue"):  # unscanned successes: risk 0
+        if model_name.endswith("_ttp"):
+            r = np.concatenate([e["ttp"] for e in rows])
+        elif model_name.endswith(("_rescue", "_frac")):  # unscanned successes: risk 0
             r = np.concatenate([np.where(np.isnan(e["risk"]) & e["success"], 0.0, e["risk"]).astype(np.float32) for e in rows])
     # Each episode weighs the same; then positives and negatives get the same total weight.
     w = np.concatenate([np.full(len(e["steps"]), 1 / len(e["steps"]), np.float32) for e in rows])
@@ -364,10 +397,13 @@ def train(rows, model_name):
     """rows: list of episodes. Returns a function: episode -> per-step score."""
     torch.manual_seed(args.seed)
     regularised = model_name.endswith("_reg")
-    arch, _, inp = model_name.partition("_")  # Track 1 names: arch_phys, arch_physvla, arch_physall
+    arch, _, inp = model_name.removesuffix("_frac").removesuffix("_ttp").partition("_")  # Track 1 names: arch_phys, arch_physvla, arch_physall
     seq = arch in ("gru", "conv") and inp in ("", "phys", "physvla", "physall")
-    rescue = model_name.endswith("_rescue")
-    if seq and inp == "phys":
+    rescue = model_name.endswith(("_rescue", "_frac", "_ttp"))
+    if inp.startswith("robot"):
+        seq = True
+        inputs = lambda e: windows(e["noisy"][inp], args.window)  # noqa: E731
+    elif seq and inp == "phys":
         inputs = lambda e: windows(e["phys"], args.window)  # noqa: E731
     elif seq:
         pca = PCA(args.pca_dims, random_state=args.seed).fit(np.concatenate([e["feat"] for e in rows]))
@@ -581,6 +617,7 @@ models = (["timer", "progress", "safe", "hideseek", "logreg", "mlp", "combined",
            "mlp_cusum", "combined_cusum", "mlp_rescue", "combined_rescue", "mlp_rescue_cusum", "combined_rescue_cusum",
            "gru", "conv", "gru_cusum", "conv_cusum"]
           + [f"{a}_{i}{c}" for a in ("mlp", "gru", "conv") for i in ("phys", "physvla", "physall") for c in ("", "_cusum")]
+          + ["gru_phys_frac", "gru_phys_ttp", "gru_robot", "gru_robotobj1", "gru_robotobj2"]
           + (["privileged"] if args.privileged else []))
 alphas = sorted(set(args.alphas) | {args.alpha})
 headline = alarm_key("fixed", args.alpha)
@@ -607,7 +644,8 @@ for test_group in groups if args.only_group is None else [args.only_group]:
                                  success=e["success"], t_pnr=e["t_pnr"],
                                  doomed=e["doomed"], t_alarm=alarms[headline], alarms=alarms,
                                  threshold=float(thresholds[headline](e["steps"][:1])[0]),
-                                 labels=e["label"].tolist(), scores=s.tolist(), steps=e["steps"].tolist()))
+                                 labels=e["label"].tolist(), scores=s.tolist(), steps=e["steps"].tolist(),
+                                 risk=e["risk"].tolist(), ttp=e["ttp"].tolist()))
             la = os.path.join(args.lookahead or "", e["eid"] + ".npz")
             if m == "mlp" and args.lookahead and os.path.exists(la):  # Phase B: mlp risk at the end of each future
                 fut = np.load(la)["x_future"].astype(np.float32)  # (checkpoints, futures, inputs)
@@ -705,7 +743,7 @@ for r in rows_out:
 text = "\n".join(lines) + "\n"
 open(os.path.join(args.out, "summary.md"), "w").write(text)
 with open(os.path.join(args.out, "per_episode.json"), "w") as f:
-    json.dump([{k: v for k, v in r.items() if k not in ("labels", "scores", "steps")} for r in rows_out], f, indent=1)
+    json.dump([{k: v for k, v in r.items() if k not in ("labels", "scores", "steps", "risk", "ttp")} for r in rows_out], f, indent=1)
 if args.only_group is not None:  # every held-out episode with its per-step scores, for 28_merge_groups.py
     with open(os.path.join(args.out, "all_scores.json"), "w") as f:
         json.dump(rows_out, f)

@@ -134,6 +134,14 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
 - Phase C models in 06: `mlp_rescue`, `combined_rescue` (MSE on the replay risk only), `gru`, `conv` (last 8 queries),
   all also `_cusum`; `--calib_source natural|pooled`. Best per family by `17_pick_best.py` (rule in the plan).
 
+### Meeting with Prof. Zhu, Oct 30, 2026 (Week 3, results/week3/)
+
+- Failure thresholds 70% and 80% added next to 50% (`--fail_thr`, `32_relabel.py`): a checkpoint is not recoverable if the raw failure fraction
+  is at least the threshold (K 4: 3 of 4 and 4 of 4 fail). 50% stays the Jeffreys tau 0.5 rule; those labels stay in use unless Fahad changes them.
+- Regression on physical signals (`gru_phys_frac`, `gru_phys_ttp`), patterns at t_pnr by `07_auto_onset.py` events (`35_patterns.py`), real-world
+  ablation (`gru_robot`, `gru_robotobj1`, `gru_robotobj2`). Paper baselines in results/week3/baselines, FailureSpot in third_party/failurespot.
+- Pi0 is dropped for now (LeRobot port 15% on tasks 0 and 8, also in LeRobot's env); Pi0.5 is the second policy, reference 92.4.
+
 Cite: RESCUE (arXiv 2610.13516), PREFAIL (arXiv 2607.16921), CheckVLA (arXiv 2607.26789).
 
 The pilot (Oct 2 to Oct 16, Mac) measured `t_pnr` = 33 to 48 on one induced failure and found the

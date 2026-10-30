@@ -15,7 +15,7 @@ args = p.parse_args()
 
 rows = [r for g in range(args.groups) for r in json.load(open(os.path.join(args.dir, f"g{g}", "all_scores.json")))]
 json.dump(rows, open(os.path.join(args.dir, "all_scores.json"), "w"))
-json.dump([{k: v for k, v in r.items() if k not in ("labels", "scores", "steps")} for r in rows],
+json.dump([{k: v for k, v in r.items() if k not in ("labels", "scores", "steps", "risk", "ttp")} for r in rows],
           open(os.path.join(args.dir, "per_episode.json"), "w"), indent=1)
 json.dump([r for r in rows if not r["success"]], open(os.path.join(args.dir, "failure_scores.json"), "w"))
 print(f"{args.dir}: {len(rows)} rows from {args.groups} groups")
