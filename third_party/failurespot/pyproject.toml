@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "failurespot"
+version = "0.1.0"
+description = "Label-efficient timestamp-level VLA failure detection"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+  "numpy>=1.24",
+  "PyYAML>=6",
+  "torch>=2.1",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+failurespot-run = "failurespot.cli.run:main"
+failurespot-smoke = "failurespot.cli.smoke:main"
+failurespot-summarize = "failurespot.cli.summarize:main"
+failurespot-build-manifest = "failurespot.cli.build_manifest:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

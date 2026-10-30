@@ -1,0 +1,62 @@
+policy:
+  name: openvla
+  action_horizon: 1
+  execution_horizon: 1
+  action_dimension: 7
+  feature_dimension: 4096
+
+data:
+  manifest: manifests/openvla.jsonl
+  task_count: 10
+  trajectories_per_task: 50
+  seen_task_count: 3
+  seen_train_fraction: 0.60
+  annotation_fraction: 0.15
+  seen_task_splits:
+    - [4, 6, 2]
+    - [8, 4, 7]
+    - [2, 0, 7]
+
+signals:
+  ema_beta: 0.8
+  consistency_weight: 1.0
+  full_magnitude_weight: 1.0
+  executed_magnitude_weight: 1.0
+  lower_percentile: 1.0
+  upper_percentile: 99.0
+
+model:
+  architecture: mlp
+  hidden_dimension: 256
+  layer_count: 2
+  dropout: 0.0
+
+training:
+  weak_pretrain_epochs: 1000
+  fine_tune_epochs: 1000
+  baseline_epochs: 200
+  batch_size: 16
+  mlp_learning_rate: 0.00003
+  lstm_learning_rate: 0.0001
+  weight_decay: 0.0
+  gradient_clip_norm: 1.0
+  seed: 0
+  device: cuda
+
+logpzo:
+  epochs: 50
+  batch_size: 32
+  learning_rate: 0.0001
+  inner_dimension: 20
+  time_embedding_dimension: 128
+  channel_dimensions: [256, 512, 1024]
+  group_count: 8
+  forward_chunk_size: 512
+
+conformal:
+  alpha_values: [0.02, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.60, 0.70, 0.80, 0.90]
+  normalized_time_points: 100
+  regression_fraction: 0.30
+
+output:
+  directory: outputs/openvla
