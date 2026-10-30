@@ -1,8 +1,8 @@
 """Track 2 feasibility verdict (Oct 23 2026): success of 20 natural episodes per LIBERO-10 task (initial states 0-19)
 against the published LIBERO-10 numbers. Rule fixed before the run: PASS if our overall success is within 10 points
 of the reference number (our setting re-queries every 8 steps, so a few points of difference are expected).
-References: pi0 85.2 (openpi README, pi0 @ 30k finetuned, Jul 2025); pi05 96.0 (LeRobot port, LeRobot LIBERO docs;
-openpi's own pi05_libero checkpoint: 92.4).
+References: pi0 85.2 (openpi README, pi0 @ 30k finetuned, Jul 2025); pi05 92.4 (Fahad, Oct 30; LeRobot docs give 96.0 for its port;
+that is not the reference).
 
 python scripts/23_pi_feasibility.py --policy pi0
 """
@@ -19,7 +19,7 @@ p = argparse.ArgumentParser()
 p.add_argument("--policy", required=True, choices=["pi0", "pi05"])
 p.add_argument("--max_gap", type=float, default=10.0)
 args = p.parse_args()
-REF = {"pi0": (85.2, "openpi README, pi0 @ 30k finetuned"), "pi05": (96.0, "LeRobot port (openpi checkpoint: 92.4)")}
+REF = {"pi0": (85.2, "openpi README, pi0 @ 30k finetuned"), "pi05": (92.4, "openpi pi05_libero; LeRobot reports 96.0 for its port")}
 
 rows = [r for f in sorted(glob.glob(f"data/{args.policy}/natural/task*/index.csv")) for r in csv.DictReader(open(f))
         if int(r["episode_idx"]) < 20]
