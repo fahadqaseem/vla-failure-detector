@@ -61,6 +61,13 @@ Models (same inputs, standardised with the training rows):
             action chunk, eef, gripper; gru / conv use PCA of the VLA features as above); {arch}_physall = also the
             combined model's motion inputs. All also as _cusum.
 
+  hideseek  Hide-and-Seek baseline (Park et al., arXiv 2605.30834; Fahad, Oct 30): trajectory labels only (no t_pnr), input =
+            features_mean only, LSTM 256 over the whole run so far -> linear -> sigmoid. Loss = L_inter + lambda L_intra:
+            L_inter = mean over failure-success pairs of the batch of [m_r - max s(failure) + max s(success)]+;
+            L_intra (after --hs_warmup epochs) = mean over failures of [m_o - mean s(t >= t_on) + mean s(t < t_on)]+,
+            t_on = argmax of s(t) - s(t-1), no gradient through t_on. Paper values for OpenVLA on LIBERO: AdamW lr 5e-4,
+            weight decay 0.1, 300 epochs, batch 64 half failures, warmup 50, m_r 1, m_o 0.2, lambda 0.1.
+
   privileged diagnostic (Fahad, Oct 19; only with --privileged): same MLP and loss, but the inputs are
             simulator poses instead of VLA features (scripts/10_privileged_features.py: eef, fingers, gripper
             counter, goal object minus target and minus eef, goal predicates true now). Shows how far the
@@ -137,6 +144,10 @@ p.add_argument("--calib_source", choices=["pooled", "natural"], default="pooled"
 p.add_argument("--refine", default=None, help="dir of K 12 boundary replays (03_pnr_scan.py JSONs) added to the scans")
 p.add_argument("--lookahead", default=None, help="dir of 15_lookahead.py files: score their future rows with the mlp")
 p.add_argument("--lookahead_out", default=None)
+p.add_argument("--hs_warmup", type=int, default=50, help="hideseek: epochs of L_inter alone")
+p.add_argument("--hs_margins", nargs=2, type=float, default=[1.0, 0.2], help="hideseek: m_r, m_o")
+p.add_argument("--hs_lambda", type=float, default=0.1, help="hideseek: weight of L_intra")
+p.add_argument("--only_group", type=int, default=None, help="run one held-out group only (Slurm array; 28_merge_groups.py joins them)")
 p.add_argument("--lead", type=int, default=0, help="train with label 1 from t_pnr - lead (metrics keep t_pnr)")
 p.add_argument("--progress_m", type=float, default=0.01, help="eef move (m) between boundaries that counts as progress")
 p.add_argument("--epochs", type=int, default=300)
@@ -433,6 +444,55 @@ def train(rows, model_name):
     return score
 
 
+class HideSeekNet(torch.nn.Module):
+    """LSTM over the run so far -> linear -> sigmoid: one score per query."""
+
+    def __init__(self, d, h=256):
+        super().__init__()
+        self.rnn = torch.nn.LSTM(d, h, batch_first=True)
+        self.out = torch.nn.Linear(h, 1)
+
+    def forward(self, x):  # x: (batch, queries, d), padded at the end
+        return torch.sigmoid(self.out(self.rnn(x)[0])).squeeze(2)
+
+
+def train_hideseek(rows):
+    """Hide-and-Seek (see the top of this file). rows: all training episodes, failures with or without a scan."""
+    torch.manual_seed(args.seed)
+    rng = np.random.default_rng(args.seed)
+    X_flat = np.concatenate([e["feat"] for e in rows])
+    mu, sd = X_flat.mean(0), X_flat.std(0) + 1e-6
+    del X_flat
+    fail = [e for e in rows if not e["success"]]
+    succ = [e for e in rows if e["success"]]
+    m_r, m_o = args.hs_margins
+    net = HideSeekNet(mu.shape[0])
+    opt = torch.optim.AdamW(net.parameters(), lr=5e-4, weight_decay=0.1)
+    x_of = lambda e: torch.tensor((e["feat"] - mu) / sd)  # noqa: E731
+    for epoch in range(args.epochs):
+        for _ in range(max(len(rows) // 64, 1)):
+            f = [fail[i] for i in rng.integers(0, len(fail), 32)]
+            b = f + [succ[i] for i in rng.integers(0, len(succ), 32)]
+            lens = [len(e["steps"]) for e in b]
+            s = net(torch.nn.utils.rnn.pad_sequence([x_of(e) for e in b], batch_first=True))
+            top = torch.stack([s[i, :n].max() for i, n in enumerate(lens)])
+            loss = torch.relu(m_r - top[:32, None] + top[32:, None].T).mean()
+            if epoch >= args.hs_warmup:
+                intra = []
+                for i, n in enumerate(lens[:32]):
+                    t_on = int((s[i, 1:n] - s[i, :n - 1]).detach().argmax()) + 1
+                    intra.append(torch.relu(m_o - s[i, t_on:n].mean() + s[i, :t_on].mean()))
+                loss = loss + args.hs_lambda * torch.stack(intra).mean()
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+
+    def score(e):
+        with torch.no_grad():
+            return net(x_of(e)[None])[0].numpy()
+    return score
+
+
 stopped_at = []  # best epoch of every regularised fit (reported in the summary)
 
 
@@ -466,6 +526,8 @@ def fit_new(model_name, train_eps):
         return lambda e: e["progress"]
     if model_name == "safe":
         return train(train_eps, "safe")
+    if model_name == "hideseek":
+        return train_hideseek(train_eps)
     return train([e for e in train_eps if e["scanned"] or e["success"]], model_name)
 
 
@@ -515,7 +577,7 @@ def alarm_key(mode, alpha):
 
 
 # ---- leave-one-group-out: group = task (default), or episode fold (--split episode) ----
-models = (["timer", "progress", "safe", "logreg", "mlp", "combined", "mlp_reg", "combined_reg", "gated_mlp", "gated_combined",
+models = (["timer", "progress", "safe", "hideseek", "logreg", "mlp", "combined", "mlp_reg", "combined_reg", "gated_mlp", "gated_combined",
            "mlp_cusum", "combined_cusum", "mlp_rescue", "combined_rescue", "mlp_rescue_cusum", "combined_rescue_cusum",
            "gru", "conv", "gru_cusum", "conv_cusum"]
           + [f"{a}_{i}{c}" for a in ("mlp", "gru", "conv") for i in ("phys", "physvla", "physall") for c in ("", "_cusum")]
@@ -525,7 +587,7 @@ headline = alarm_key("fixed", args.alpha)
 models = [m for m in models if args.models is None or m in args.models]
 rows_out = []  # one row per (model, held-out episode)
 groups = sorted({e["group"] for e in episodes})
-for test_group in groups:
+for test_group in groups if args.only_group is None else [args.only_group]:
     train_groups = [t for t in groups if t != test_group]
     train_eps = [e for e in episodes if e["group"] != test_group]
     test = [e for e in labelled if e["group"] == test_group]
@@ -644,6 +706,9 @@ text = "\n".join(lines) + "\n"
 open(os.path.join(args.out, "summary.md"), "w").write(text)
 with open(os.path.join(args.out, "per_episode.json"), "w") as f:
     json.dump([{k: v for k, v in r.items() if k not in ("labels", "scores", "steps")} for r in rows_out], f, indent=1)
+if args.only_group is not None:  # every held-out episode with its per-step scores, for 28_merge_groups.py
+    with open(os.path.join(args.out, "all_scores.json"), "w") as f:
+        json.dump(rows_out, f)
 # Per-step scores of the held-out failures (for figures), with their query steps.
 with open(os.path.join(args.out, "failure_scores.json"), "w") as f:
     json.dump([r for r in rows_out if not r["success"]], f)
