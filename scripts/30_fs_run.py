@@ -64,8 +64,8 @@ def fit_score(method, train, test, seed):
     """Train one method; returns {key: per-query scores} for test."""
     config.training.seed = seed
     empty = DataSplit(train, [], [], [], [])
-    name, _, arch = method.partition("_")
-    if name == "logpzo":
+    name, _, arch = method.rpartition("_")
+    if method == "logpzo":
         return score_logpzo(fit_logpzo(train, config).model, test, args.device)
     if name == "actprobe":
         seed_everything(seed)
