@@ -20,5 +20,5 @@ EPS=("data/natural/*/*.npz" "data/perturbed/task0[0145678]/*.npz")
 for d in data/perturbed_v2/task*; do [ -f $d/GATE_PASS ] && EPS+=("$d/*.npz"); done
 python scripts/06_train_predictor.py --scans "${SCANS[@]}" --episodes "${EPS[@]}" \
     --prechecks data/perturbed/prechecks data/perturbed_v2/prechecks --refine data/week2_refine \
-    --alphas 0.025 0.05 0.10 0.15 0.20 0.25 --models progress timer safe hideseek $SP --only_group $G \
+    --alphas 0.025 0.05 0.10 0.15 0.20 0.25 --models ${MODELS:-progress timer safe hideseek} $SP --only_group $G \
     ${ARGS:-} --out ${ROOT:-results/week3/baselines}/$SPLIT/g$G
