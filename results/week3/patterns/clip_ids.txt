@@ -1,0 +1,10 @@
+t00_e06_p0_s1 344 missed_grasp
+t04_e13_p0 48 drop
+t00_e33_p0_s2 160 stuck
+t00_e43_p0 336 none
+t00_e08_p0_s2 8 missed_grasp
+t06_e31_p0 56 drop
+t01_e31_p0 200 stuck
+t00_e44_p0 248 none
+t00_e09_p0_s1 32 missed_grasp
+t01_e32_p0_s1 144 stuck
