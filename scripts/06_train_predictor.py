@@ -76,6 +76,10 @@ Models (same inputs, standardised with the training rows):
   gru_robotobj1, gru_robotobj2  robot state + goal object positions with Gaussian noise 1 cm, 2 cm per axis and query, seeded
             per episode, to mimic a real detector. Same labels and loss as gru_phys.
 
+  Grasp-check features (Fahad, Oct 31; grasp_features below). Real robot: closed and empty_close yes (gripper width and command); contact
+  features only with tactile or force sensing; slip no (needs the object pose). Models, GRU, same labels and loss as gru_phys:
+  gru_grasp = robot state + all grasp features; gru_graspreal = robot state + closed and empty_close; gru_graspphys = physical + all grasp features.
+
   privileged diagnostic (Fahad, Oct 19; only with --privileged): same MLP and loss, but the inputs are
             simulator poses instead of VLA features (scripts/10_privileged_features.py: eef, fingers, gripper
             counter, goal object minus target and minus eef, goal predicates true now). Shows how far the
@@ -181,6 +185,30 @@ args = p.parse_args()
 PHYS = ["obj1_dist", "obj1_ddist", "obj1_pos_x", "obj1_pos_y", "obj1_pos_z", "obj1_dz", "obj1_lifted", "obj1_tilt", "obj1_contact",
         "obj1_goal_dist", "obj1_in_goal", "obj1_used", "obj2_dist", "obj2_ddist", "obj2_pos_x", "obj2_pos_y", "obj2_pos_z", "obj2_dz",
         "obj2_lifted", "obj2_tilt", "obj2_contact", "obj2_goal_dist", "obj2_in_goal", "obj2_used"]  # first columns of data/physical
+
+
+def grasp_features(phys, actions, q):
+    """Per query: for each goal slot, time since last contact (capped at 200 steps, 1 = never or capped), contact lost while commanded closed;
+    for placement objects also slip = speed of the object relative to the eef (m per query) while in contact at this and the last query;
+    then closed = gripper commanded closed in the last chunk, empty_close = closed with finger opening below 5 mm (07_auto_onset.py)."""
+    names = PHYS + ["art_dist", "art_ddist", "art_contact", "art_true", "art_used", "grip_open", "eef_x", "eef_y", "eef_z"]
+    col = lambda n: phys[:, names.index(n)]  # noqa: E731
+    eef = phys[:, -3:]
+    closed = np.r_[0.0, (actions[np.minimum(q[1:], len(actions)) - 1, -1] > 0).astype(np.float32)]
+    out = []
+    for slot in ("obj1", "obj2", "art"):
+        c = col(f"{slot}_contact") > 0
+        last, since = None, []
+        for k in range(len(c)):
+            last = q[k] if c[k] else last
+            since.append(1.0 if last is None else min(q[k] - last, 200) / 200)
+        out += [np.array(since), np.r_[False, c[:-1] & ~c[1:] & (closed[1:] > 0)]]
+        if slot != "art":
+            pos = phys[:, [names.index(f"{slot}_pos_{a}") for a in "xyz"]]
+            v = np.linalg.norm(np.diff(pos - eef, axis=0, prepend=(pos - eef)[:1]), axis=1)
+            out.append(v * np.r_[False, c[:-1] & c[1:]])
+    out += [closed, closed * (col("grip_open") < 0.005)]
+    return np.stack(out, 1).astype(np.float32)
 
 
 def t_pnr_from_scan(scan):
@@ -312,6 +340,10 @@ for f in files:
             obj = np.concatenate(pos, 1) + sigma * z * np.repeat(np.concatenate(used, 1), 3, axis=1)
             noisy[name] = np.concatenate([robot, obj.astype(np.float32)], 1)
         noisy["robot"] = robot
+        grasp = grasp_features(phys, actions, q)
+        noisy["grasp"] = np.concatenate([robot, grasp], 1)
+        noisy["graspreal"] = np.concatenate([robot, grasp[:, -2:]], 1)
+        noisy["graspphys"] = np.concatenate([phys, grasp], 1)
     group = int(ep["task_id"]) if args.split == "task" else int(ep["episode_idx"]) % args.folds
     episodes.append(dict(eid=eid, task=int(ep["task_id"]), group=group, success=success, scanned=scan is not None or pre_rec,
                          source="perturbed" if "perturbed" in ep.files else "natural",
@@ -400,7 +432,7 @@ def train(rows, model_name):
     arch, _, inp = model_name.removesuffix("_frac").removesuffix("_ttp").partition("_")  # Track 1 names: arch_phys, arch_physvla, arch_physall
     seq = arch in ("gru", "conv") and inp in ("", "phys", "physvla", "physall")
     rescue = model_name.endswith(("_rescue", "_frac", "_ttp"))
-    if inp.startswith("robot"):
+    if inp.startswith(("robot", "grasp")):
         seq = True
         inputs = lambda e: windows(e["noisy"][inp], args.window)  # noqa: E731
     elif seq and inp == "phys":
@@ -617,7 +649,7 @@ models = (["timer", "progress", "safe", "hideseek", "logreg", "mlp", "combined",
            "mlp_cusum", "combined_cusum", "mlp_rescue", "combined_rescue", "mlp_rescue_cusum", "combined_rescue_cusum",
            "gru", "conv", "gru_cusum", "conv_cusum"]
           + [f"{a}_{i}{c}" for a in ("mlp", "gru", "conv") for i in ("phys", "physvla", "physall") for c in ("", "_cusum")]
-          + ["gru_phys_frac", "gru_phys_ttp", "gru_robot", "gru_robotobj1", "gru_robotobj2"]
+          + ["gru_phys_frac", "gru_phys_ttp", "gru_robot", "gru_robotobj1", "gru_robotobj2", "gru_grasp", "gru_graspreal", "gru_graspphys"]
           + (["privileged"] if args.privileged else []))
 alphas = sorted(set(args.alphas) | {args.alpha})
 headline = alarm_key("fixed", args.alpha)

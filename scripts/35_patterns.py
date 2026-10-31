@@ -112,6 +112,7 @@ for name, t in T.items():
 os.makedirs(args.out, exist_ok=True)
 open(os.path.join(args.out, "patterns.md"), "w").write("\n".join(lines) + "\n")
 print("\n".join(lines))
+json.dump(kind, open(os.path.join(args.out, "failure_types.json"), "w"), indent=0)
 pick, by = [], {k: [e for e in timed if kind[e] == k] for k in TYPES}
 while len(pick) < min(10, len(timed)):
     for k in TYPES:
