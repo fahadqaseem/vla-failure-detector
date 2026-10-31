@@ -17,7 +17,8 @@ N=$(grep -c . $T)
 DEP=""
 if [ "$N" -gt 0 ]; then
     F=$(bash slurm/gpu_free.sh)
-    S=$(sbatch --parsable -J t2-scan-$P-pert --array=0-$((N - 1))%$F --export=ALL,PNR_POLICY=$P,TARGETS=$T,OUT=data/$P/perturbed_scans slurm/t2_scan_array.sbatch)
+    source slurm/t2_split.sh
+    S=$(split_scan "t2-scan-$P-pert" "$N" "ALL,PNR_POLICY=$P,TARGETS=$T,OUT=data/$P/perturbed_scans" "" "$F")
     DEP="--dependency=afterany:$S"
 fi
 sbatch $DEP --export=ALL,P=$P slurm/t2_train_submit.sbatch

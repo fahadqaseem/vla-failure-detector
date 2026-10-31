@@ -13,7 +13,9 @@
 # steps, the policy's own randomness (new flow seed per replay), no action noise (Oct 23). Output $OUT.
 source slurm/common_pi.sh
 source slurm/t2_fail.sh
-EP=$(sed -n "$((SLURM_ARRAY_TASK_ID + 1))p" "$TARGETS")
+I=$SLURM_ARRAY_TASK_ID
+[ "$REV" = 1 ] && I=$(($(grep -c . "$TARGETS") - 1 - I))  # reqp overflow walks the list from the end; 03_pnr_scan.py locks each episode
+EP=$(sed -n "$((I + 1))p" "$TARGETS")
 [ -z "$EP" ] && { echo "no target"; exit 0; }
 [ -f "$OUT/$(basename "$EP" .npz).json" ] && { echo "already scanned: $EP"; exit 0; }
 python scripts/03_pnr_scan.py --episodes "$EP" --include_success 1 --every 8 --K 4 --min_fail 2     --noise_std 0 --extra_steps 200 --full_curve --out "$OUT"

@@ -14,7 +14,8 @@ source slurm/common.sh
 source slurm/t2_fail.sh
 L=results/$P/${DATA}_unseen_gru/per_episode.json
 F=$(bash slurm/gpu_free.sh)
-C=$(sbatch --parsable --array=0-9%$F --export=ALL,PNR_POLICY=$P slurm/pifs_chunks.sbatch) || exit 1
+source slurm/t2_split.sh
+C=$(split_tasks "pifs-chunks" "ALL,PNR_POLICY=$P" "" "$F" slurm/pifs_chunks.sbatch) || exit 1
 V=$(sbatch --parsable -p reqp -q requeue --requeue -c 2 --mem 32G -t 02:00:00 -J pifs-convert -o logs/%x-%j.out --dependency=afterok:$C \
     --wrap "source slurm/common.sh; python scripts/29_fs_convert.py --policy $P --labels $L --out data/$P/failurespot.npz") || exit 1
 FS="MODE_ARGS=--data data/$P/failurespot.npz --config third_party/failurespot/configs/pi0.yaml --execution_horizon 8,OUT=results/$P/failurespot"

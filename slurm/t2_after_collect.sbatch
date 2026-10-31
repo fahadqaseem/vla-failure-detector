@@ -19,12 +19,13 @@ NF=$(python -c "import csv,glob,os; print(sum(int(r['success'])==0 for f in glob
 N=$(grep -c . $T)
 echo "$P: $NF natural failures in gate-passed tasks, $N scan targets"
 F=$(bash slurm/gpu_free.sh)
-S=$(sbatch --parsable -J t2-scan-$P --array=0-$((N - 1))%$F --export=ALL,PNR_POLICY=$P,TARGETS=$T,OUT=data/$P/full_scans slurm/t2_scan_array.sbatch)
+source slurm/t2_split.sh
+S=$(split_scan "t2-scan-$P" "$N" "ALL,PNR_POLICY=$P,TARGETS=$T,OUT=data/$P/full_scans" "" "$F")
 C=$(git rev-parse --short HEAD)
 echo "| $(date +%F) | Track 2 $P: 500 natural episodes collected; scan list $T ($N lines), scan array $S | $C | $NF natural failures in gate-passed tasks | gates: $(ls data/$P/natural/*/GATE_* 2>/dev/null | xargs -n1 basename | sort | uniq -c | tr '\n' ' ') job $SLURM_JOB_ID (auto) |" >> results/LOG.md
 if [ "$NF" -lt 40 ]; then
-    E=$(sbatch --parsable -J t2-collect-$P-pert --array=0-9%$F --dependency=afterany:$S --export=ALL,PNR_POLICY=$P,KIND=perturbed,START=0,N=50,GATE=1 slurm/t2_collect.sbatch)
-    R=$(sbatch --parsable -J t2-precheck-$P --array=0-9%$F --dependency=afterany:$E --export=ALL,PNR_POLICY=$P slurm/t2_precheck.sbatch)
+    E=$(split_tasks "t2-collect-$P-pert" "ALL,PNR_POLICY=$P,KIND=perturbed,START=0,N=50,GATE=1" "afterany:$S" "$F" slurm/t2_collect.sbatch)
+    R=$(split_tasks "t2-precheck-$P" "ALL,PNR_POLICY=$P" "afterany:$E" "$F" slurm/t2_precheck.sbatch)
     sbatch --dependency=afterany:$R --export=ALL,P=$P slurm/t2_perturbed_scans.sbatch
 else
     sbatch --dependency=afterany:$S --export=ALL,P=$P slurm/t2_train_submit.sbatch

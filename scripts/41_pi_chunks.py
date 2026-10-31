@@ -42,7 +42,8 @@ for n, f in enumerate(files):
         dev.append(float(np.abs(policy.last_full[:len(rec)] - rec).max()))
         for a in rec:
             raw, _, _, _ = env.step(a.tolist())
-    np.savez_compressed(out, chunks=np.stack(chunks).astype(np.float32))
+    np.savez_compressed(out + ".tmp.npz", chunks=np.stack(chunks).astype(np.float32))
+    os.replace(out + ".tmp.npz", out)
     print(f"{n + 1}/{len(files)} {eid}: max action difference {max(dev[-len(q):]):.4f}", flush=True)
 os.makedirs(f"results/{KIND}/chunks", exist_ok=True)
 json.dump({"task": args.task, "queries": len(dev), "median_max_diff": float(np.median(dev)) if dev else None, "max_diff": max(dev) if dev else None},

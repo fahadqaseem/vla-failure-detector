@@ -3,6 +3,7 @@
 T2_POL=${P:-$PNR_POLICY}
 t2_fail() {
     rc=$?; [ $rc = 0 ] && return
+    [ $rc -ge 128 ] && { echo "stopped by signal (exit $rc), probably preempted: no note"; return; }
     LOGF=$(scontrol show job $SLURM_JOB_ID | grep -o 'StdOut=[^ ]*' | cut -d= -f2)
     [ -f "$LOGF" ] || LOGF=logs/$SLURM_JOB_NAME-$SLURM_JOB_ID.out
     ERR=$(grep -E 'Error|error:|Exception|Traceback|FAILED|not found' "$LOGF" 2>/dev/null | grep -vE "^ *(File|raise|ret)" | grep -vE 'EGL|Exception ignored|[Ww]arn' | tail -1 | cut -c1-300)

@@ -144,5 +144,6 @@ for method in args.methods:
                         scores=np.concatenate([scores[t.key] for t in test]).astype(np.float32),
                         labels=np.concatenate([t.timestamp_labels for t in test]))
     json.dump(dict(rows={g: rows_for(method, ts, scores, thr) for g, ts in groups.items()}, metrics=metrics, thresholds=thr,
-                   seconds=time.time() - t0), open(done, "w"))
+                   seconds=time.time() - t0), open(done + ".tmp", "w"))
+    os.replace(done + ".tmp", done)
     print(f"{method} done {time.time() - t0:.0f} s; {metrics}", flush=True)

@@ -36,6 +36,7 @@ os.makedirs(args.out, exist_ok=True)
 index_path = os.path.join(args.out, "index.csv")
 new_index = not os.path.exists(index_path)
 policy = Policy()
+done = {r["episode_id"] for r in csv.DictReader(open(index_path))} if not new_index else set()
 
 with open(index_path, "a", newline="") as f:
     w = csv.writer(f)
@@ -46,6 +47,16 @@ with open(index_path, "a", newline="") as f:
         for ep in range(args.start_idx, args.start_idx + args.episodes):
             rng = np.random.default_rng([args.seed, task_id, ep])
             t0 = time.time()
+            eid = f"t{task_id:02d}_e{ep:02d}_{'p' if args.perturb else 'n'}{args.noise_std:g}"
+            if args.perturb and args.seed:  # week 2 (Oct 23): new perturbation seeds get their own ids
+                eid += f"_s{args.seed}"
+            path = os.path.join(args.out, eid + ".npz")
+            if os.path.exists(path):  # a requeued job (reqp, Oct 31) goes on where it stopped; files are written whole, see below
+                if eid not in done:
+                    old = np.load(path, allow_pickle=True)
+                    w.writerow([eid, task_id, ep, desc, int(old["success"]), int(old["t_end"]), args.noise_std, int(args.noise_std > 0), int(args.perturb)])
+                    f.flush()
+                continue
             init, extra = inits[ep], {}
             if args.perturb:
                 init, info, attempt, rejected = perturbed_start(env, inits[ep], args.seed, task_id, ep)
@@ -57,11 +68,9 @@ with open(index_path, "a", newline="") as f:
                 print(f"t{task_id:02d}_e{ep:02d}: perturbed start, attempt {attempt}, rejected: {rejected}", flush=True)
             r = rollout(env, policy, desc, init_state=init, noise_std=args.noise_std, rng=rng,
                         save_frames=args.save_video)
-            eid = f"t{task_id:02d}_e{ep:02d}_{'p' if args.perturb else 'n'}{args.noise_std:g}"
-            if args.perturb and args.seed:  # week 2 (Oct 23): new perturbation seeds get their own ids
-                eid += f"_s{args.seed}"
-            save_episode(os.path.join(args.out, eid + ".npz"), r, task_id=task_id, episode_idx=ep,
+            save_episode(path + ".tmp.npz", r, task_id=task_id, episode_idx=ep,
                          description=desc, init_state=init, noise_std=args.noise_std, seed=args.seed, **extra)
+            os.replace(path + ".tmp.npz", path)
             if args.save_video and r.frames:
                 imageio.mimsave(os.path.join(args.out, eid + ".mp4"), r.frames, fps=30)
             w.writerow([eid, task_id, ep, desc, int(r.success), r.t_end, args.noise_std, int(args.noise_std > 0), int(args.perturb)])
