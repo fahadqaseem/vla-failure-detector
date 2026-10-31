@@ -1,8 +1,6 @@
 # pnr_probe summary (branch pnr-probe, Oct 27 to 31, 2026)
-
 Question: can physical precursor signals alarm before `t_pnr` on unseen tasks, better than progress?
-Setup: all data, 81 timed failures, 1071 successes, 31 recoverable failures, refined replay labels, leave-one-task-out.
-Fixed conformal thresholds. Per-chunk runs keep 78 timed failures, 912 successes. Numbers come from `results/`.
+All data, 81 timed failures, 1071 successes, 31 recoverable failures, leave-one-task-out. Per-chunk runs keep 78 and 912.
 
 ## Primary results (unseen, 2.5% budget; best model within budget; progress: 11 of 81, FPR 0.025, +200)
 
@@ -17,14 +15,13 @@ Fixed conformal thresholds. Per-chunk runs keep 78 timed failures, 912 successes
 | dense forces and torques, per-chunk replay | 8 of 78 | 0.015 | +136 | `dense_chunk/summary.md` |
 
 No model beat progress on timely alarms: micro-events alone +2 (-6 to +10); Track 1 + micro-events -3 (-10 to +4), and at 5% -4 (-13 to +5).
-Dense from step 0 was dropped as biased (timed failures passed 66.7%, successes 95.4%).
-Per-chunk replay: timed failures passed 96.3%, successes 85.2%. Dense vs progress: -6 (-13 to +1); progress here was at 0.034, over budget.
+Replay from step 0 was dropped as biased (timed failures passed 66.7%, successes 95.4%); per-chunk replay passed 96.3% and 85.2%.
+Dense vs progress on per-chunk replay: -6 (-13 to +1); progress here was at 0.034, over budget.
 
 ## What worked
 
 - Quieter, not earlier. Unnecessary alarms at 2.5%: progress 22 of 31, micro-events alone 12, Track 1 2, Track 1 + micro-events 1. Most of the quiet comes from Track 1.
 - Fumbling rises around `t_pnr`: `grip_reopen8` AUROC is 0.53 early, 0.59 before, 0.71 after. It is weak before `t_pnr`, so this is a reaction more than a warning.
-- Per-chunk replay removed the bias against timed failures, and is a usable way to recover per-step forces and torques.
 
 ## What did not work
 
