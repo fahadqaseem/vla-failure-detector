@@ -14,4 +14,4 @@
 source slurm/common.sh
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-4}
 G=$SLURM_ARRAY_TASK_ID
-python scripts/30_fs_run.py --mode $MODE --group $G --methods $METHODS --device ${DEVICE:-cpu} --out results/week3/failurespot/$MODE/g$G
+python scripts/30_fs_run.py --mode $MODE --group $G --methods $METHODS --device ${DEVICE:-cpu} $MODE_ARGS --out ${OUT:-results/week3/failurespot}/$MODE/g$G

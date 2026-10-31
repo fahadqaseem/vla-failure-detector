@@ -23,5 +23,6 @@ for D in $SETS; do for split in unseen seen; do for arch in mlp gru conv; do
     M=M_$arch; SP=""; [ $split = seen ] && SP="--split episode"
     IDS="$IDS:$(sbatch --parsable --dependency=afterok:$X -J t2-$P-$D-$split-$arch --export=ALL,P=$P,DATA=$D,NAME=${D}_${split}_$arch,ARGS="$A $SP --models ${!M}" slurm/t2_train.sbatch)"
 done; done; done
-sbatch --dependency=afterok$IDS --export=ALL,PHASE=PI,P=$P,SETS="$SETS" slurm/w2_report.sbatch
+R=$(sbatch --parsable --dependency=afterok$IDS --export=ALL,PHASE=PI,P=$P,SETS="$SETS" slurm/w2_report.sbatch)
+[ "$P" = pi05 ] && sbatch --dependency=afterok:$R --export=ALL,P=$P,DATA=$( [ "$SETS" = natural ] && echo natural || echo all ) slurm/pifs_submit.sbatch
 true

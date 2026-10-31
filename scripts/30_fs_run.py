@@ -32,6 +32,8 @@ p.add_argument("--mode", choices=["own", "loto"], required=True)
 p.add_argument("--group", type=int, required=True, help="own: seed; loto: held-out task")
 p.add_argument("--methods", nargs="+", required=True, help="e.g. failurespot_mlp safe_lstm logpzo")
 p.add_argument("--data", default="data/failurespot/trajectories.npz")
+p.add_argument("--config", default="third_party/failurespot/configs/openvla.yaml")
+p.add_argument("--execution_horizon", type=int, default=None, help="overrides the config (Pi0.5: 8, what the policy really executes)")
 p.add_argument("--device", default="cpu")
 p.add_argument("--out", required=True)
 args = p.parse_args()
@@ -51,10 +53,13 @@ for i, eid in enumerate(eids):
     meta[f"oft:task{int(d['task'][i])}:episode{i}"] = dict(
         eid=eid, task=int(d["task"][i]), source=str(d["source"][i]), success=success, steps=steps,
         t_pnr=None if t_pnr < 0 else t_pnr, doomed=t_pnr == 0)
-    trajectories.append(Trajectory("oft", int(d["task"][i]), i, features[a:b], actions[a:b, None], labels, int(not success)))
+    acts = actions[a:b, None] if actions.ndim == 2 else actions[a:b]  # OFT (T, 7) -> H = 1; Pi0.5 already (T, 50, 7)
+    trajectories.append(Trajectory("oft", int(d["task"][i]), i, features[a:b], acts, labels, int(not success)))
 del features, actions
-config = ExperimentConfig.load("third_party/failurespot/configs/openvla.yaml")
+config = ExperimentConfig.load(args.config)
 config.policy.name = "oft"
+if args.execution_horizon:
+    config.policy.execution_horizon = args.execution_horizon
 config.training.device = args.device
 config.data.seen_task_count = 1  # budget = annotation_fraction x trajectories_per_task, set per fit below
 os.makedirs(args.out, exist_ok=True)
@@ -69,7 +74,7 @@ def fit_score(method, train, test, seed):
         return score_logpzo(fit_logpzo(train, config).model, test, args.device)
     if name == "actprobe":
         seed_everything(seed)
-        tf = lambda items: [t.with_features(action_probe_features(t, 1, config.signals.ema_beta)) for t in items]  # noqa: E731
+        tf = lambda items: [t.with_features(action_probe_features(t, config.policy.execution_horizon, config.signals.ema_beta)) for t in items]  # noqa: E731
         probe = tf(train)
         model = build_detector(6, config.model, arch)
         train_detector(model, probe, repeated_trajectory_labels(probe), config, arch, config.training.baseline_epochs)
@@ -97,6 +102,9 @@ def rows_for(model, test, scores, thr):
     return out
 
 
+if args.mode == "loto" and not any(t.task_id == args.group for t in trajectories):
+    print(f"task {args.group} has no episodes (replay gate failed)")
+    sys.exit(0)
 for method in args.methods:
     done = os.path.join(args.out, method + ".json")
     if os.path.exists(done):  # a preempted array task restarts here

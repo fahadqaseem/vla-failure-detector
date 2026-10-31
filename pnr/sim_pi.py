@@ -63,6 +63,8 @@ class Policy:
         self.model.model.action_out_proj.register_forward_pre_hook(
             lambda mod, inp: self._flow.append(inp[0].detach().float().mean(1)[0].cpu().numpy()))
         self.last_hidden = None
+        self.keep_full = False  # 41_pi_chunks.py: also keep all 50 predicted env actions of the query
+        self.last_full = None
 
     def act(self, formatted_obs, description: str, seed: int) -> list:
         obs = preprocess_observation(_batch(formatted_obs))
@@ -71,8 +73,11 @@ class Policy:
         torch.manual_seed(seed)
         self._flow = []
         with torch.inference_mode():
-            chunk = self.model.predict_action_chunk(obs)[:, :CHUNK]  # (1, 8, action dim)
+            full = self.model.predict_action_chunk(obs)  # (1, 50, action dim)
+        chunk = full[:, :CHUNK]  # (1, 8, action dim)
         self.last_hidden = np.stack(self._flow)  # (flow steps, width)
+        if self.keep_full:
+            self.last_full = np.stack([self.post(full[:, i]).float().cpu().numpy()[0] for i in range(full.shape[1])])
         return [self.post(chunk[:, i]).float().cpu().numpy()[0] for i in range(CHUNK)]
 
     def last_features(self) -> np.ndarray:

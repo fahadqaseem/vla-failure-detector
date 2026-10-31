@@ -20,6 +20,7 @@ from failurespot.metrics import binary_auroc  # noqa: E402
 p = argparse.ArgumentParser()
 p.add_argument("--root", default="results/week3/failurespot")
 p.add_argument("--progress", default="results/week2/T1all_unseen_conv/per_episode.json")
+p.add_argument("--gru", default=None, help="run dir with gru_phys per_episode.json and summary.md, if it has no all_scores.json")
 args = p.parse_args()
 METHODS = [f"{m}_{a}" for m in ("failurespot", "safe", "supervised_random", "actprobe") for a in ("mlp", "lstm")] + ["logpzo"]
 KEYS = ["fixed 0.05", "fixed 0.025"]
@@ -79,6 +80,10 @@ if os.path.exists(gp):
     auc = aurocs(np.concatenate([r["scores"] for r in rows]), np.concatenate([r["labels"] for r in rows]),
                  [len(r["scores"]) for r in rows], [not r["success"] for r in rows])
     lines.append(f"| loto | gru_phys (ours) | {auc[0]:.3f} | {auc[1]:.3f} | " + " | ".join(cells(ours(rows, k)) for k in KEYS) + " |")
+if args.gru:
+    rows = [r for r in json.load(open(os.path.join(args.gru, "per_episode.json"))) if r["model"] == "gru_phys"]
+    auc = next(line.split("|")[4].strip() for line in open(os.path.join(args.gru, "summary.md")) if line.startswith("| gru_phys |"))
+    lines.append(f"| loto | gru_phys (ours) | {auc} | n/a | " + " | ".join(cells(ours(rows, k)) for k in KEYS) + " |")
 for m in METHODS:
     per = []
     for s in range(3):

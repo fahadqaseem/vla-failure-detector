@@ -17,11 +17,14 @@ import numpy as np
 p = argparse.ArgumentParser()
 p.add_argument("--labels", default="results/week2/T1all_unseen_conv/per_episode.json")
 p.add_argument("--out", default="data/failurespot/trajectories.npz")
+p.add_argument("--policy", default=None, help="pi05: episodes from data/pi05, 50-step chunks from data/pi05/chunks (41_pi_chunks.py)")
 args = p.parse_args()
 
 rows = {r["eid"]: r for r in json.load(open(args.labels)) if r["model"] == "progress"}
 pats = ["data/natural/*/*.npz", "data/perturbed/task0[0145678]/*.npz"]
 pats += [d + "/*.npz" for d in sorted(glob.glob("data/perturbed_v2/task*")) if os.path.exists(d + "/GATE_PASS")]
+if args.policy:
+    pats = [f"data/{args.policy}/natural/*/*.npz", f"data/{args.policy}/perturbed/*/*.npz"]
 path = {os.path.splitext(os.path.basename(f))[0]: f for pat in pats for f in glob.glob(pat)}
 missing = [e for e in rows if e not in path]
 assert not missing, missing[:5]
@@ -33,7 +36,11 @@ for i, eid in enumerate(eids):
     q = ep["query_steps"]
     feats.append(ep["features_mean"].astype(np.float32))
     a = ep["actions"]
-    acts.append(a[np.minimum(np.arange(len(q)) * 8, len(a) - 1)].astype(np.float32))
+    if args.policy:
+        acts.append(np.load(f"data/{args.policy}/chunks/{eid}.npz")["chunks"].astype(np.float32))
+    else:
+        acts.append(a[np.minimum(np.arange(len(q)) * 8, len(a) - 1)].astype(np.float32))
+    assert len(acts[-1]) == len(q), eid
     assert len(feats[-1]) == len(q)
     offsets.append(offsets[-1] + len(q))
     if i % 300 == 0:
