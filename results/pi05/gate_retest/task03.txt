@@ -1,0 +1,5 @@
+=== data/pi05/natural/task03/t03_e01_n0.npz query 1
+restore query 1 (policy step 8): max |state diff| = 0.00e+00
+replayed 80 steps: eef deviation max 6.14 mm, mean 2.95 mm
+full replay: success=False (recorded True), steps 520 (recorded 222)
+FAIL: fix determinism before running PNR scans (see CLAUDE.md)
