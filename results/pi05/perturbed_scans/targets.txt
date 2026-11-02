@@ -1,0 +1,11 @@
+data/pi05/perturbed/task00/t00_e24_p0.npz
+data/pi05/perturbed/task01/t01_e16_p0.npz
+data/pi05/perturbed/task01/t01_e34_p0.npz
+data/pi05/perturbed/task01/t01_e40_p0.npz
+data/pi05/perturbed/task04/t04_e07_p0.npz
+data/pi05/perturbed/task04/t04_e21_p0.npz
+data/pi05/perturbed/task04/t04_e42_p0.npz
+data/pi05/perturbed/task06/t06_e05_p0.npz
+data/pi05/perturbed/task06/t06_e09_p0.npz
+data/pi05/perturbed/task06/t06_e11_p0.npz
+data/pi05/perturbed/task06/t06_e40_p0.npz
