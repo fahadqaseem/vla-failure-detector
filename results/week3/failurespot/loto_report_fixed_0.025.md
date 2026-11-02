@@ -13,6 +13,7 @@ Lead = t_pnr - t_alarm (positive = alarm before t_pnr), median over the alarmed 
 | results/week3/failurespot/loto | supervised_random_lstm | 0.114 | -24 (41) | 18 of 81 (11 to 26) | 0.081 | -76 (38) | 14 of 81 (8 to 21) |
 | results/week3/failurespot/loto | actprobe_mlp | 0.018 | -120 (39) | 9 of 81 (4 to 15) | 0.018 | -120 (39) | 9 of 81 (4 to 15) |
 | results/week3/failurespot/loto | actprobe_lstm | 0.204 | -136 (80) | 16 of 81 (9 to 23) | 0.195 | -152 (76) | 13 of 81 (7 to 20) |
+| results/week3/failurespot/loto | logpzo | 0.006 | -232 (7) | 0 of 81 (0 to 0) | 0.001 | -392 (5) | 0 of 81 (0 to 0) |
 | results/week3/failurespot/gru_phys/unseen | progress | 0.048 | -144 (61) | 17 of 81 (10 to 24) | 0.025 | -200 (43) | 11 of 81 (5 to 17) |
 | results/week3/failurespot/gru_phys/unseen | gru_phys | 0.014 | -112 (44) | 12 of 81 (6 to 18) | 0.014 | -136 (43) | 10 of 81 (5 to 16) |
 
@@ -31,5 +32,6 @@ Timely = alarm at or before t_pnr, of the failures with t_pnr > 0 (interval: boo
 | results/week3/failurespot/loto | supervised_random_lstm | 14 of 81 (8 to 21) | 24 / 43 | +3 (-6 to +12) | +76 (38) | 87 of 1071 (0.081) | 5 of 31 | 0.044 of 472 / 0.110 of 599 |
 | results/week3/failurespot/loto | actprobe_mlp | 9 of 81 (4 to 15) | 30 / 42 | -2 (-9 to +5) | +120 (39) | 19 of 1071 (0.018) | 8 of 31 | 0.023 of 472 / 0.013 of 599 |
 | results/week3/failurespot/loto | actprobe_lstm | 13 of 81 (7 to 20) | 63 / 5 | +2 (-5 to +9) | +152 (76) | 209 of 1071 (0.195) | 25 of 31 | 0.129 of 472 / 0.247 of 599 |
+| results/week3/failurespot/loto | logpzo | 0 of 81 (0 to 0) | 5 / 76 | -11 (-17 to -5) | +392 (5) | 1 of 1071 (0.001) | 1 of 31 | 0.000 of 472 / 0.002 of 599 |
 | results/week3/failurespot/gru_phys/unseen | progress | 11 of 81 (5 to 17) | 32 / 38 |  | +200 (43) | 27 of 1071 (0.025) | 22 of 31 | 0.030 of 472 / 0.022 of 599 |
 | results/week3/failurespot/gru_phys/unseen | gru_phys | 10 of 81 (5 to 16) | 33 / 38 | -1 (-9 to +7) | +136 (43) | 15 of 1071 (0.014) | 2 of 31 | 0.000 of 472 / 0.025 of 599 |

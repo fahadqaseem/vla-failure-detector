@@ -12,6 +12,7 @@ Timely of failures with t_pnr > 0; false alarms natural / perturbed successes; u
 | loto | supervised_random_lstm | 0.767 | 0.732 | 18 of 81 | 0.055 / 0.160 | 5 of 31 | +24 | 14 of 81 | 0.044 / 0.110 | 5 of 31 | +76 |
 | loto | actprobe_mlp | 0.723 | 0.549 | 9 of 81 | 0.023 / 0.013 | 8 of 31 | +120 | 9 of 81 | 0.023 / 0.013 | 8 of 31 | +120 |
 | loto | actprobe_lstm | 0.757 | 0.964 | 16 of 81 | 0.138 / 0.255 | 26 of 31 | +136 | 13 of 81 | 0.129 / 0.247 | 25 of 31 | +152 |
+| loto | logpzo | 0.598 | 0.464 | 0 of 81 | 0.000 / 0.010 | 1 of 31 | +232 | 0 of 81 | 0.000 / 0.002 | 1 of 31 | +392 |
 | loto | gru_phys (ours) | 0.879 | 0.860 | 12 of 81 | 0.000 / 0.025 | 2 of 31 | +112 | 10 of 81 | 0.000 / 0.025 | 2 of 31 | +136 |
 | own | failurespot_mlp | 0.618 | 0.596 | 6.67 of 50 | 0.157 / 0.173 | 3 of 22.7 | +75 | 5 of 50 | 0.104 / 0.135 | 2 of 22.7 | +93 |
 | own | failurespot_lstm | 0.277 | 0.482 | 2.33 of 50 | 0.099 / 0.098 | 2.67 of 22.7 | -153 | 1.67 of 50 | 0.050 / 0.037 | 0.667 of 22.7 | +nan |
@@ -21,3 +22,4 @@ Timely of failures with t_pnr > 0; false alarms natural / perturbed successes; u
 | own | supervised_random_lstm | 0.763 | 0.734 | 2.33 of 50 | 0.052 / 0.033 | 4.67 of 22.7 | +107 | 1.67 of 50 | 0.004 / 0.009 | 3.33 of 22.7 | +109 |
 | own | actprobe_mlp | 0.701 | 0.473 | 0.667 of 50 | 0.047 / 0.024 | 0 of 22.7 | -131 | 0.333 of 50 | 0.029 / 0.012 | 0 of 22.7 | +nan |
 | own | actprobe_lstm | 0.772 | 0.983 | 10 of 50 | 0.159 / 0.094 | 22.3 of 22.7 | +129 | 9 of 50 | 0.125 / 0.070 | 22 of 22.7 | +143 |
+| own | logpzo | 0.738 | 0.789 | 9.33 of 50 | 0.094 / 0.169 | 6.67 of 22.7 | +77 | 4.33 of 50 | 0.035 / 0.087 | 4 of 22.7 | +73 |
