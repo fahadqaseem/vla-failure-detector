@@ -30,6 +30,7 @@ p.add_argument("--seed", type=int, default=0)
 p.add_argument("--out", default="data/rollouts")
 p.add_argument("--save_video", action="store_true")
 p.add_argument("--perturb", action="store_true", help="perturbed-natural: move the objects of each initial state (pnr/perturb.py)")
+p.add_argument("--perturb_level", type=int, default=1, help="pnr/perturb.py LEVELS; 2 = 4 to 6 cm, 30 degrees")
 args = p.parse_args()
 
 os.makedirs(args.out, exist_ok=True)
@@ -59,11 +60,11 @@ with open(index_path, "a", newline="") as f:
                 continue
             init, extra = inits[ep], {}
             if args.perturb:
-                init, info, attempt, rejected = perturbed_start(env, inits[ep], args.seed, task_id, ep)
+                init, info, attempt, rejected = perturbed_start(env, inits[ep], args.seed, task_id, ep, args.perturb_level)
                 if init is None:
                     print(f"t{task_id:02d}_e{ep:02d}: no valid perturbed start in {len(rejected)} attempts, skipped: {rejected[:3]}", flush=True)
                     continue
-                extra = dict(perturbed=True, perturbation=json.dumps(info), perturb_attempt=attempt,
+                extra = dict(perturbed=True, perturbation=json.dumps(info), perturb_attempt=attempt, perturb_level=args.perturb_level,
                              base_init_state=np.asarray(inits[ep]))
                 print(f"t{task_id:02d}_e{ep:02d}: perturbed start, attempt {attempt}, rejected: {rejected}", flush=True)
             r = rollout(env, policy, desc, init_state=init, noise_std=args.noise_std, rng=rng,

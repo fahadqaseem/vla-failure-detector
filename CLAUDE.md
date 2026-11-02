@@ -142,6 +142,11 @@ The main goal is now to PREDICT `t_pnr`, not only measure it.
   ablation (`gru_robot`, `gru_robotobj1`, `gru_robotobj2`). Paper baselines in results/week3/baselines, FailureSpot in third_party/failurespot.
 - Pi0 is dropped for now (LeRobot port 15% on tasks 0 and 8, also in LeRobot's env); Pi0.5 is the second policy, reference 92.4.
 
+### More Pi0.5 failures (Fahad, Nov 2, 2026)
+
+- Tasks 0, 1, 4, 5, 6, 7 only, until 40 scanned failures (`slurm/t2_more.sbatch`, `results/pi05/more_failures.md`): 2 to 3 cm seeds 1, 2 in `data/pi05/perturbed/taskXX_sN`, each with its own gate;
+  still short after those 600 episodes: level 2 (4 to 6 cm, yaw up to 30 degrees, `--perturb_level 2`), seeds 11 to 14, `data/pi05/perturbed_l2`, trained as DATA=l2 and reported separately, never in "all".
+
 Cite: RESCUE (arXiv 2610.13516), PREFAIL (arXiv 2607.16921), CheckVLA (arXiv 2607.26789).
 
 The pilot (Oct 2 to Oct 16, Mac) measured `t_pnr` = 33 to 48 on one induced failure and found the

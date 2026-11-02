@@ -9,10 +9,10 @@ split_scan() {  # name, number of targets, exports, dependency, F. Both arrays c
     B=$(sbatch --parsable -J "$1-rq" $RQ --array=0-$(($2 - 1))%$b $dep --export="$3",REV=1 slurm/t2_scan_array.sbatch) || return 1
     echo "$A:$B"
 }
-split_tasks() {  # name, exports, dependency, F, script. One array task per LIBERO-10 task: even on galhp, odd on reqp.
+split_tasks() {  # name, exports, dependency, F, script. One array task per LIBERO-10 task: even on galhp, odd on reqp. ALL, EVEN, ODD: other task lists.
     local a=$(( ($4 + 1) / 2 )) b=$(( $4 / 2 )) dep=${3:+--dependency=$3} A B
-    if [ $b -lt 1 ]; then sbatch --parsable -J "$1" --array=0-9%$a $dep --export="$2" "$5"; return; fi
-    A=$(sbatch --parsable -J "$1" --array=0,2,4,6,8%$a $dep --export="$2" "$5") || return 1
-    B=$(sbatch --parsable -J "$1-rq" $RQ --array=1,3,5,7,9%$b $dep --export="$2" "$5") || return 1
+    if [ $b -lt 1 ]; then sbatch --parsable -J "$1" --array=${ALL:-0-9}%$a $dep --export="$2" "$5"; return; fi
+    A=$(sbatch --parsable -J "$1" --array=${EVEN:-0,2,4,6,8}%$a $dep --export="$2" "$5") || return 1
+    B=$(sbatch --parsable -J "$1-rq" $RQ --array=${ODD:-1,3,5,7,9}%$b $dep --export="$2" "$5") || return 1
     echo "$A:$B"
 }

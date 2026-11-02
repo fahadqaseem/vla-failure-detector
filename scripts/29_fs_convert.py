@@ -24,7 +24,7 @@ rows = {r["eid"]: r for r in json.load(open(args.labels)) if r["model"] == "prog
 pats = ["data/natural/*/*.npz", "data/perturbed/task0[0145678]/*.npz"]
 pats += [d + "/*.npz" for d in sorted(glob.glob("data/perturbed_v2/task*")) if os.path.exists(d + "/GATE_PASS")]
 if args.policy:
-    pats = [f"data/{args.policy}/natural/*/*.npz", f"data/{args.policy}/perturbed/*/*.npz"]
+    pats = [f"data/{args.policy}/natural/*/*.npz", f"data/{args.policy}/perturbed/*/*.npz", f"data/{args.policy}/perturbed_l2/*/*.npz"]
 path = {os.path.splitext(os.path.basename(f))[0]: f for pat in pats for f in glob.glob(pat)}
 missing = [e for e in rows if e not in path]
 assert not missing, missing[:5]

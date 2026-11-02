@@ -11,13 +11,14 @@
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=hr4625@wayne.edu
 # Track 2 collection for $PNR_POLICY, one LIBERO-10 task per array task: initial states START .. START+N-1, the
-# policy's own randomness (no action noise). KIND=natural (LIBERO init states) or perturbed (moved objects, seed 0).
+# policy's own randomness (no action noise). KIND=natural (LIBERO init states), perturbed (moved objects, SEED default 0; SEED set: own folder taskXX_sN with its own gate) or perturbed_l2 (level 2).
 # GATE=1: replay gate on the task's first episode (query 1 and the middle query) -> GATE_PASS / GATE_FAIL.
 source slurm/common_pi.sh
 source slurm/t2_fail.sh
 T=$SLURM_ARRAY_TASK_ID
-D=data/$PNR_POLICY/${KIND:-natural}/task$(printf "%02d" $T)
-python scripts/01_collect.py --tasks $T --start_idx ${START:-0} --episodes ${N:-50} --noise_std 0     $( [ "$KIND" = perturbed ] && echo --perturb ) --out $D || exit 1
+D=data/$PNR_POLICY/${KIND:-natural}/task$(printf "%02d" $T)${SEED:+_s$SEED}
+L=1; [ "$KIND" = perturbed_l2 ] && L=2
+python scripts/01_collect.py --tasks $T --start_idx ${START:-0} --episodes ${N:-50} --noise_std 0     $( [[ "$KIND" = perturbed* ]] && echo --perturb --perturb_level $L --seed ${SEED:-0} ) --out $D || exit 1
 if [ "${GATE:-0}" = 1 ]; then
     FIRST=$(ls $D/*.npz | head -1)
     for Q in 1 -1; do

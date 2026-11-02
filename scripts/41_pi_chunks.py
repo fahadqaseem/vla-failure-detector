@@ -20,7 +20,7 @@ p = argparse.ArgumentParser()
 p.add_argument("--task", type=int, required=True)
 p.add_argument("--limit", type=int, default=None, help="first episodes only (test)")
 args = p.parse_args()
-files = sorted(f for k in ("natural", "perturbed") for f in glob.glob(f"data/{KIND}/{k}/task{args.task:02d}/*.npz"))[:args.limit]
+files = sorted(f for k in ("natural", "perturbed", "perturbed_l2") for f in glob.glob(f"data/{KIND}/{k}/task{args.task:02d}*/*.npz") if ".tmp." not in f)[:args.limit]
 os.makedirs(f"data/{KIND}/chunks", exist_ok=True)
 policy = Policy()
 policy.keep_full = True

@@ -12,12 +12,13 @@
 # natural only and, if perturbed episodes exist, natural + perturbed; report.
 source slurm/common.sh
 source slurm/t2_fail.sh
-X=$(sbatch --parsable -p mdtp -q primary -c 2 --mem 16G -t 12:00:00 -J t2-physical-$P -o logs/%x-%j.out     --wrap "source slurm/common.sh; python scripts/20_physical_signals.py --episodes 'data/$P/natural/*/*.npz' 'data/$P/perturbed/*/*.npz' --out data/$P/physical")
+X=$(sbatch --parsable -p mdtp -q primary -c 2 --mem 16G -t 12:00:00 -J t2-physical-$P -o logs/%x-%j.out     --wrap "source slurm/common.sh; python scripts/20_physical_signals.py --episodes 'data/$P/natural/*/*.npz' 'data/$P/perturbed/*/*.npz' 'data/$P/perturbed_l2/*/*.npz' --out data/$P/physical")
 A="--phys data/$P/physical --alphas 0.025 0.05 0.10 0.20"
 M_mlp="progress mlp combined mlp_cusum combined_cusum mlp_phys mlp_physvla mlp_physall mlp_phys_cusum mlp_physvla_cusum mlp_physall_cusum"
 M_gru="progress gru gru_cusum gru_phys gru_physvla gru_physall gru_phys_cusum gru_physvla_cusum gru_physall_cusum"
 M_conv="progress conv conv_cusum conv_phys conv_physvla conv_physall conv_phys_cusum conv_physvla_cusum conv_physall_cusum"
 SETS="natural"; ls data/$P/perturbed_scans/*.json >/dev/null 2>&1 && SETS="natural all"
+ls data/$P/perturbed_l2_scans/*.json >/dev/null 2>&1 && SETS="$SETS l2"
 IDS=""
 for D in $SETS; do for split in unseen seen; do for arch in mlp gru conv; do
     M=M_$arch; SP=""; [ $split = seen ] && SP="--split episode"

@@ -20,8 +20,7 @@ import numpy as np
 WAIT_STEPS = 10  # as pnr/sim.py and pnr/sim_pi.py
 NOOP = [0, 0, 0, 0, 0, 0, -1]  # LIBERO no-op action (same in openvla-oft and LeRobot), so no pnr.sim import
 
-SHIFT_M = (0.02, 0.03)
-MAX_YAW_DEG = 15.0
+LEVELS = {1: ((0.02, 0.03), 15.0), 2: ((0.04, 0.06), 30.0)}  # shift range in m, max yaw in degrees (level 2: Fahad, Nov 2, reported separately)
 MAX_SETTLE_MOVE_M = 0.01
 MAX_SETTLE_TILT_DEG = 10.0
 MAX_ATTEMPTS = 20
@@ -49,18 +48,19 @@ def _poses(e):
     return out
 
 
-def perturb(env, init_state, rng):
+def perturb(env, init_state, rng, level=1):
     """Returns (perturbed flat sim state, {object: [dx, dy, yaw_deg]}). Does not check validity."""
     env.reset()
     env.set_init_state(init_state)
     e = env.env
     info = {}
+    shift, max_yaw = LEVELS[level]
     for name, obj in e.objects_dict.items():
         a, b = e.sim.model.get_joint_qpos_addr(obj.joints[0])  # free joint: x y z qw qx qy qz
         q = e.sim.data.qpos[a:b].copy()
         direction = rng.uniform(0, 2 * np.pi)
-        dist = rng.uniform(*SHIFT_M)
-        yaw = np.deg2rad(rng.uniform(-MAX_YAW_DEG, MAX_YAW_DEG))
+        dist = rng.uniform(*shift)
+        yaw = np.deg2rad(rng.uniform(-max_yaw, max_yaw))
         q[0] += dist * np.cos(direction)
         q[1] += dist * np.sin(direction)
         q[3:7] = _quat_mul(_yaw_quat(yaw), q[3:7])
@@ -94,13 +94,13 @@ def check_valid(env, state, info, base):
     return True, "ok"
 
 
-def perturbed_start(env, init_state, seed, task_id, init_idx):
+def perturbed_start(env, init_state, seed, task_id, init_idx, level=1):
     """First valid perturbed start, or None. Returns (state, info, attempt, rejected reasons)."""
     base = settle(env, init_state)
     rejected = []
     for attempt in range(MAX_ATTEMPTS):
         rng = np.random.default_rng([seed, task_id, init_idx, attempt])
-        state, info = perturb(env, init_state, rng)
+        state, info = perturb(env, init_state, rng, level)
         ok, reason = check_valid(env, state, info, base)
         if ok:
             return state, info, attempt, rejected
