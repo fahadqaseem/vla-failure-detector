@@ -5,6 +5,7 @@ fraction is at least the threshold; t_pnr = first checkpoint from which every la
 at tau 0.3 and 0.2. Pre-check failures have no scan and stay recoverable at every threshold. Timed = t_pnr > 0, doomed = t_pnr 0.
 
 python scripts/32_relabel.py --out results/week3/relabel
+Pi0.5: python scripts/32_relabel.py --labels results/pi05/all_unseen_gru/per_episode.json --scans "data/pi05/full_scans/*.json" "data/pi05/perturbed_scans/*.json" --refine none --out results/pi05/relabel
 """
 
 import argparse
@@ -18,13 +19,15 @@ from scipy.stats import beta
 p = argparse.ArgumentParser()
 p.add_argument("--labels", default="results/week2/T1all_unseen_conv/per_episode.json")
 p.add_argument("--out", default="results/week3/relabel")
+p.add_argument("--scans", nargs="+", default=["data/full_scans/*.json", "data/perturbed_scans/*.json", "data/perturbed_v2_scans/*.json"])
+p.add_argument("--refine", default="data/week2_refine", help="K 12 boundary replays; Pi0.5 has none")
 args = p.parse_args()
 
 scans = {}
-for f in [f for pat in ("data/full_scans/*.json", "data/perturbed_scans/*.json", "data/perturbed_v2_scans/*.json") for f in glob.glob(pat)]:
+for f in [f for pat in args.scans for f in glob.glob(pat)]:
     s = json.load(open(f))
     scans[s["episode_id"]] = s
-for f in glob.glob("data/week2_refine/*.json"):
+for f in glob.glob(os.path.join(args.refine, "*.json")):
     r = json.load(open(f))
     s = scans[r["episode_id"]]
     for c, extra in zip(r["checkpoints"], r["successes"]):

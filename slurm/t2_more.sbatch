@@ -15,7 +15,7 @@ source slurm/common.sh
 source slurm/t2_fail.sh
 TARGET=40
 ROUNDS=(perturbed:1 perturbed:2 perturbed_l2:11 perturbed_l2:12 perturbed_l2:13 perturbed_l2:14)
-export ALL=0,1,4,5,6,7 EVEN=0,4,6 ODD=1,5,7
+TL="ALL=0,1,4,5,6,7 EVEN=0,4,6 ODD=1,5,7"  # only for these split_tasks calls (Nov 4: exported, they leaked into pifs-chunks via t2_train_submit)
 source slurm/t2_split.sh
 HAVE=$(python scripts/43_more_report.py --policy $P | tail -1)
 C=$(git rev-parse --short HEAD)
@@ -29,8 +29,8 @@ if [ "$STAGE" = collect ]; then
     fi
     KIND=${ROUNDS[$R]%:*}; SEED=${ROUNDS[$R]#*:}
     F=$(bash slurm/gpu_free.sh)
-    E=$(split_tasks "t2-collect-$P-$KIND-s$SEED" "ALL,PNR_POLICY=$P,KIND=$KIND,SEED=$SEED,START=0,N=50,GATE=1" "" "$F" slurm/t2_collect.sbatch) || exit 1
-    Q=$(split_tasks "t2-precheck-$P-$KIND-s$SEED" "ALL,PNR_POLICY=$P,KIND=$KIND,SEED=$SEED" "afterany:$E" "$F" slurm/t2_precheck.sbatch) || exit 1
+    E=$(env $TL bash -c 'source slurm/t2_split.sh; split_tasks "$@"' _ "t2-collect-$P-$KIND-s$SEED" "ALL,PNR_POLICY=$P,KIND=$KIND,SEED=$SEED,START=0,N=50,GATE=1" "" "$F" slurm/t2_collect.sbatch) || exit 1
+    Q=$(env $TL bash -c 'source slurm/t2_split.sh; split_tasks "$@"' _ "t2-precheck-$P-$KIND-s$SEED" "ALL,PNR_POLICY=$P,KIND=$KIND,SEED=$SEED" "afterany:$E" "$F" slurm/t2_precheck.sbatch) || exit 1
     N=$(sbatch --parsable --dependency=afterany:$Q --export=ALL,P=$P,R=$R,STAGE=scan slurm/t2_more.sbatch) || exit 1
     log "$KIND seed $SEED, collect $E, pre-check $Q, next $N"
 else

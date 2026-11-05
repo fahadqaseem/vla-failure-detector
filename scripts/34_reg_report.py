@@ -15,6 +15,7 @@ import numpy as np
 p = argparse.ArgumentParser()
 p.add_argument("--root", default="data/week3_reg")
 p.add_argument("--out", default="results/week3/regression")
+p.add_argument("--desc", default="Natural + perturbed (7 of 10 tasks) + perturbed_v2 (tasks 0, 1, 4, 7), pooled.")
 args = p.parse_args()
 KEYS = ["fixed 0.05", "fixed 0.025"]
 
@@ -33,7 +34,7 @@ def ours(rows, key):
 
 for split in ("unseen", "seen"):
     lines = [f"# Regression and ablation, {split} tasks", "",
-             "Natural + perturbed (7 of 10 tasks) + perturbed_v2 (tasks 0, 1, 4, 7), pooled. Timely of failures with t_pnr > 0; false alarms natural / "
+             args.desc + " Timely of failures with t_pnr > 0; false alarms natural / "
              "perturbed successes; unnecessary = alarms on recoverable failures; window = median t_alarm - t_pnr (negative = before t_pnr).", "",
              "| failure threshold | model | " + " | ".join(f"timely {k[6:]} | false alarms {k[6:]} | unnecessary {k[6:]} | window {k[6:]}" for k in KEYS) + " |",
              "|---|---|" + "---|---|---|---|" * len(KEYS)]
