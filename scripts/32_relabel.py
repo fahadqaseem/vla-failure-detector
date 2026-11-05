@@ -21,6 +21,7 @@ p.add_argument("--labels", default="results/week2/T1all_unseen_conv/per_episode.
 p.add_argument("--out", default="results/week3/relabel")
 p.add_argument("--scans", nargs="+", default=["data/full_scans/*.json", "data/perturbed_scans/*.json", "data/perturbed_v2_scans/*.json"])
 p.add_argument("--refine", default="data/week2_refine", help="K 12 boundary replays; Pi0.5 has none")
+p.add_argument("--desc", default=None, help="replaces the data sentence of the header (Pi0.5)")
 args = p.parse_args()
 
 scans = {}
@@ -66,7 +67,10 @@ for name, rule in RULES.items():
     row += [len(both), float(np.median(both)), float(np.percentile(both, 25)), float(np.percentile(both, 75)),
             sum(ref[e] not in (None, 0) and t[e] is None for e in ref), sum(ref[e] == 0 and t[e] not in (None, 0) for e in ref)]
     table.append(row)
-lines = ["# t_pnr at other failure thresholds", "", __doc__.split("\n\n")[0].replace("\n", " "), "",
+head = __doc__.split("\n\n")[0].replace("\n", " ")
+if args.desc:
+    head = head.replace("Same failures as T1all (natural + perturbed + perturbed_v2, refined counts).", args.desc).replace("checked against T1all", "checked against --labels")
+lines = ["# t_pnr at other failure thresholds", "", head, "",
          "| rule | timed | doomed | recoverable | natural timed / doomed / recov | perturbed timed / doomed / recov | timed in both | median shift (steps) | 25 to 75% | timed -> recoverable | doomed -> timed |",
          "|---|---|---|---|---|---|---|---|---|---|---|"]
 for r in table:
