@@ -19,10 +19,11 @@ from libero.libero.envs.env_wrapper import ControlEnv  # noqa: E402
 p = argparse.ArgumentParser()
 p.add_argument("--phys", default="data/physical")
 p.add_argument("--out", default="data/robot_state")
+p.add_argument("--pats", nargs="+", default=["data/natural/*/*.npz", "data/perturbed/*/*.npz", "data/perturbed_v2/*/*.npz"], help="episode globs (Pi0.5: data/pi05/...)")
 args = p.parse_args()
 
 wanted = {os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(args.phys, "*.npz"))}
-pats = ["data/natural/*/*.npz", "data/perturbed/*/*.npz", "data/perturbed_v2/*/*.npz"]
+pats = args.pats
 files = sorted((f for pat in pats for f in glob.glob(pat) if os.path.splitext(os.path.basename(f))[0] in wanted),
                key=lambda f: os.path.basename(f))
 suite = benchmark.get_benchmark_dict()["libero_10"]()

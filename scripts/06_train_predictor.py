@@ -170,6 +170,7 @@ p.add_argument("--lr", type=float, default=1e-3)
 p.add_argument("--weight_decay", type=float, default=1e-3)
 p.add_argument("--hidden", type=int, default=256)
 p.add_argument("--seed", type=int, default=0)
+p.add_argument("--save_calib", action="store_true", help="also write calib.json: per model, (eid, run max) of the cross-fitted calibration successes (Nov 6, OR rule)")
 p.add_argument("--split", choices=["task", "episode"], default="task",
                help="task = leave-one-task-out; episode = 5 folds by episode_idx %% 5 within each task (seen tasks)")
 p.add_argument("--folds", type=int, default=5)
@@ -340,6 +341,10 @@ for f in files:
             obj = np.concatenate(pos, 1) + sigma * z * np.repeat(np.concatenate(used, 1), 3, axis=1)
             noisy[name] = np.concatenate([robot, obj.astype(np.float32)], 1)
         noisy["robot"] = robot
+        # Nov 6 (realistic inputs): + contact = gripper touches a task object (robosuite check_contact in 20_physical_signals.py), max over slots
+        names = PHYS + ["art_dist", "art_ddist", "art_contact"]
+        touch = phys[:, [names.index(c) for c in ("obj1_contact", "obj2_contact", "art_contact")]].max(1, keepdims=True)
+        noisy["robotcontact"] = np.concatenate([robot, touch], 1)
         grasp = grasp_features(phys, actions, q)
         noisy["grasp"] = np.concatenate([robot, grasp], 1)
         noisy["graspreal"] = np.concatenate([robot, grasp[:, -2:]], 1)
@@ -650,11 +655,13 @@ models = (["timer", "progress", "safe", "hideseek", "logreg", "mlp", "combined",
            "gru", "conv", "gru_cusum", "conv_cusum"]
           + [f"{a}_{i}{c}" for a in ("mlp", "gru", "conv") for i in ("phys", "physvla", "physall") for c in ("", "_cusum")]
           + ["gru_phys_frac", "gru_phys_ttp", "gru_robot", "gru_robotobj1", "gru_robotobj2", "gru_grasp", "gru_graspreal", "gru_graspphys"]
+          + ["gru_robot_ttp", "gru_robotcontact_ttp"]
           + (["privileged"] if args.privileged else []))
 alphas = sorted(set(args.alphas) | {args.alpha})
 headline = alarm_key("fixed", args.alpha)
 models = [m for m in models if args.models is None or m in args.models]
 rows_out = []  # one row per (model, held-out episode)
+calib_out = {}  # model -> [eid, run max] of the calibration successes (--save_calib, one held-out group)
 groups = sorted({e["group"] for e in episodes})
 for test_group in groups if args.only_group is None else [args.only_group]:
     train_groups = [t for t in groups if t != test_group]
@@ -663,10 +670,13 @@ for test_group in groups if args.only_group is None else [args.only_group]:
     for m in models:
         # Calibration scores for each training group's successes, from a model that did not see that group.
         calib = []  # (steps, scores) of every training-group success
+        calib_ids = []
         for u in train_groups:
             score_u = fit(m, [e for e in train_eps if e["group"] != u])
-            calib += [(e["steps"], score_u(e)) for e in train_eps if e["group"] == u and e["success"]
-                      and (args.calib_source == "pooled" or e["source"] == "natural")]
+            cal_u = [e for e in train_eps if e["group"] == u and e["success"] and (args.calib_source == "pooled" or e["source"] == "natural")]
+            calib += [(e["steps"], score_u(e)) for e in cal_u]
+            calib_ids += [e["eid"] for e in cal_u]
+        calib_out[m] = [[i, float(s.max())] for i, (_, s) in zip(calib_ids, calib)]
         thresholds = {alarm_key(mode, a): make(calib, a) for mode, make in THRESHOLDS.items() for a in alphas}
         score = fit(m, train_eps)
         for e in test:
@@ -779,6 +789,9 @@ with open(os.path.join(args.out, "per_episode.json"), "w") as f:
 if args.only_group is not None:  # every held-out episode with its per-step scores, for 28_merge_groups.py
     with open(os.path.join(args.out, "all_scores.json"), "w") as f:
         json.dump(rows_out, f)
+    if args.save_calib:
+        with open(os.path.join(args.out, "calib.json"), "w") as f:
+            json.dump(calib_out, f)
 # Per-step scores of the held-out failures (for figures), with their query steps.
 with open(os.path.join(args.out, "failure_scores.json"), "w") as f:
     json.dump([r for r in rows_out if not r["success"]], f)
