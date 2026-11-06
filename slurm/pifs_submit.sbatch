@@ -8,7 +8,7 @@
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=hr4625@wayne.edu
-# FailureSpot on Pi0.5 (Fahad, Oct 31), started by t2_train_submit after the Pi0.5 report: chunks (GPU) -> convert -> its methods on both splits,
+# FailureSpot on Pi0.5 (Fahad, Oct 31; Nov 6: chunk files of all 10 tasks checked before convert), started by t2_train_submit after the Pi0.5 report: chunks (GPU) -> convert -> its methods on both splits,
 # H 50, K 8 -> report next to gru_phys and progress of results/$P/${DATA}_unseen_gru. LogpZO on GPU, the rest on CPU. DATA = natural or all.
 source slurm/common.sh
 source slurm/t2_fail.sh
@@ -17,7 +17,7 @@ F=$(bash slurm/gpu_free.sh)
 source slurm/t2_split.sh
 C=$(split_tasks "pifs-chunks" "ALL,PNR_POLICY=$P" "" "$F" slurm/pifs_chunks.sbatch) || exit 1
 V=$(sbatch --parsable -p reqp -q requeue --requeue -c 2 --mem 32G -t 02:00:00 -J pifs-convert -o logs/%x-%j.out --dependency=afterok:$C \
-    --wrap "source slurm/common.sh; python scripts/29_fs_convert.py --policy $P --labels $L --out data/$P/failurespot.npz") || exit 1
+    --wrap "source slurm/common.sh; python scripts/45_check_chunks.py --policy $P || exit 1; python scripts/29_fs_convert.py --policy $P --labels $L --out data/$P/failurespot.npz") || exit 1
 FS="MODE_ARGS=--data data/$P/failurespot.npz --config third_party/failurespot/configs/pi0.yaml --execution_horizon 8,OUT=results/$P/failurespot"
 ML="safe_mlp actprobe_mlp supervised_random_mlp failurespot_mlp"; LS="safe_lstm actprobe_lstm supervised_random_lstm failurespot_lstm"
 IDS=""
