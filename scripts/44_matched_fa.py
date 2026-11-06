@@ -90,6 +90,7 @@ for i, run in enumerate(args.runs):
             curve_rows.append(f"| {pol} | {RULES[thr_rule]} | {m} | " + " | ".join(f"{y:.2f}" for y in ys[::4]) + " |")
         ax.set_title(f"{pol}, {RULES[thr_rule]} (n = {n} timed failures)", fontsize=10)
         ax.grid(color="#e6e5e0", lw=0.8)
+        ax.set_ylim(bottom=0)
         ax.set_axisbelow(True)
         for s in ("top", "right"):
             ax.spines[s].set_visible(False)
@@ -98,9 +99,9 @@ for i, run in enumerate(args.runs):
         if j == 0:
             ax.set_ylabel("timely (fraction of timed failures)")
 handles, labels = axes[0][0].get_legend_handles_labels()
-fig.legend(handles, labels, loc="upper center", ncol=4, frameon=False)
+fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 0.965), ncol=4, frameon=False)
 fig.suptitle("Timely alarms vs matched false-alarm rate, unseen tasks (threshold set on held-out successes, descriptive)", y=0.995, fontsize=11)
-fig.tight_layout(rect=(0, 0, 1, 0.95))
+fig.tight_layout(rect=(0, 0, 1, 0.93))
 os.makedirs(args.out, exist_ok=True)
 fig.savefig(os.path.join(args.out, "timely_vs_fa.png"), dpi=150)
 lines += ["## At progress's realized false-alarm rate", ""] + table
