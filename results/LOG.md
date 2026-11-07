@@ -166,3 +166,4 @@ Every number shown in a meeting must trace to a line here.
 | 2026-11-06 | t2_more round 0 collect: perturbed seed 2, collect 41288941, pre-check 41288942, next 41288943 | ad1df30 | 40 of 70 scanned failures | job 41278597 (auto) |
 | 2026-11-06 | Nov 6 item 4: progress OR gru_phys_ttp, thresholds from training-task calibration successes per fold (06 --save_calib, data/combo); 47_combo.py, 13_report.py, 46_paired_alarms.py | 60b1cd5 | results/combo/{oft,pi05}_thr{50,70,80}_report_fixed_*.md, *_alarms.md, *_levels.txt | job 41278705 (auto) |
 | 2026-11-06 | t2_more round 0 scan: perturbed seed 2, 13 scans 41306598:41306599, next 41306600 | eb22b18 | 40 of 70 scanned failures | job 41288943 (auto) |
+| 2026-11-06 | Nov 6 item 2: 06_train_predictor.py seeds 1 to 4 (slurm/n6_train.sbatch, data/seeds), seed 0 = data/week3_reg, data/pi05_reg; 48_seeds.py | 39e216e | results/seeds/seeds_unseen.md (headline), seeds_seen.md | job 41278704 (auto) |
