@@ -26,7 +26,7 @@ if [ "$POL" = oft ]; then
 else
     SCANS=("data/pi05/full_scans/*.json" "data/pi05/perturbed_scans/*.json")
     EPS=("data/pi05/natural/*/*.npz")
-    for d in data/pi05/perturbed/task*; do [ -f $d/GATE_PASS ] && EPS+=("$d/*.npz"); done
+    for d in data/pi05/perturbed/task?? data/pi05/perturbed/task??_s1; do [ -f $d/GATE_PASS ] && EPS+=("$d/*.npz"); done  # pre-registered: seeds 0 and 1 (Nov 7: seed 2 of item 6 stays out)
     D=(--prechecks data/pi05/perturbed/prechecks --phys data/pi05/physical --alphas 0.025 0.05 0.10 0.20)
     [ -d data/pi05/robot_state ] && D+=(--robot data/pi05/robot_state)  # written to a temp dir and renamed when complete (n6-pi05-robot)
 fi

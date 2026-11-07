@@ -46,5 +46,7 @@ for n, f in enumerate(files):
     os.replace(out + ".tmp.npz", out)
     print(f"{n + 1}/{len(files)} {eid}: max action difference {max(dev[-len(q):]):.4f}", flush=True)
 os.makedirs(f"results/{KIND}/chunks", exist_ok=True)
+if not dev and os.path.exists(f"results/{KIND}/chunks/task{args.task}.json"):  # Nov 7: every chunk existed; keep the earlier check
+    sys.exit(0)
 json.dump({"task": args.task, "queries": len(dev), "median_max_diff": float(np.median(dev)) if dev else None, "max_diff": max(dev) if dev else None},
           open(f"results/{KIND}/chunks/task{args.task}.json", "w"))

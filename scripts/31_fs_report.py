@@ -61,9 +61,15 @@ def npz_kept(z):
     return [sc[i] for i in k], [lab[i] for i in k], [str(z["eids"][i]) for i in k]
 
 
+def na(v):
+    """AUROC cell: n/a when it cannot be computed."""
+    return "n/a" if v is None or (isinstance(v, (float, np.floating)) and np.isnan(v)) else f"{v:.3f}"
+
+
 def cells(o):
-    return (f"{o['timely']:.3g} of {o['timed']:.3g} | {o['fa_nat']:.3f} / {o['fa_pert']:.3f} | "
-            f"{o['unnecessary']:.3g} of {o['recov']:.3g} | {o['window']:+.0f}")
+    f = lambda v, spec: "n/a" if v is None or (isinstance(v, float) and np.isnan(v)) else format(v, spec)  # noqa: E731
+    return (f"{f(o['timely'], '.3g')} of {f(o['timed'], '.3g')} | {f(o['fa_nat'], '.3f')} / {f(o['fa_pert'], '.3f')} | "
+            f"{f(o['unnecessary'], '.3g')} of {f(o['recov'], '.3g')} | {f(o['window'], '+.0f')}")
 
 
 lines = ["# FailureSpot methods vs gru_phys on our data", "",
@@ -93,13 +99,13 @@ for m in METHODS:
     failed = {r["eid"]: not r["success"] for r in rows}
     auc = aurocs(np.concatenate(sc), np.concatenate(lab), [len(a) for a in sc], [failed[e] for e in ids]) if sc else (np.nan, np.nan)
     note = "" if len(have) == 10 else f" ({len(have)} of 10 tasks)"
-    lines.append(f"| loto | {m}{note} | {auc[0]:.3f} | {auc[1]:.3f} | " + " | ".join(cells(ours(rows, k)) for k in KEYS) + " |")
+    lines.append(f"| loto | {m}{note} | {na(auc[0])} | {na(auc[1])} | " + " | ".join(cells(ours(rows, k)) for k in KEYS) + " |")
 if ours_all is not None:
     for m in args.ours_models:
         rows = [r for r in ours_all if r["model"] == m and keep(r["eid"])]
         auc = aurocs(np.concatenate([r["scores"] for r in rows]), np.concatenate([r["labels"] for r in rows]),
                      [len(r["scores"]) for r in rows], [not r["success"] for r in rows])
-        lines.append(f"| loto | {m} (ours) | {auc[0]:.3f} | {auc[1]:.3f} | " + " | ".join(cells(ours(rows, k)) for k in KEYS) + " |")
+        lines.append(f"| loto | {m} (ours) | {na(auc[0])} | {na(auc[1])} | " + " | ".join(cells(ours(rows, k)) for k in KEYS) + " |")
         loto_rows += [{k: v for k, v in r.items() if k not in DROP} for r in rows]
 LO = args.loto_out or os.path.join(args.root, "loto")
 os.makedirs(LO, exist_ok=True)
@@ -109,7 +115,7 @@ if os.path.exists(gp):
     rows = [r for r in json.load(open(gp)) if r["model"] == "gru_phys"]
     auc = aurocs(np.concatenate([r["scores"] for r in rows]), np.concatenate([r["labels"] for r in rows]),
                  [len(r["scores"]) for r in rows], [not r["success"] for r in rows])
-    lines.append(f"| loto | gru_phys (ours) | {auc[0]:.3f} | {auc[1]:.3f} | " + " | ".join(cells(ours(rows, k)) for k in KEYS) + " |")
+    lines.append(f"| loto | gru_phys (ours) | {na(auc[0])} | {na(auc[1])} | " + " | ".join(cells(ours(rows, k)) for k in KEYS) + " |")
 if args.gru and ours_all is None:
     rows = [r for r in json.load(open(os.path.join(args.gru, "per_episode.json"))) if r["model"] == "gru_phys"]
     auc = next(line.split("|")[4].strip() for line in open(os.path.join(args.gru, "summary.md")) if line.startswith("| gru_phys |"))
@@ -135,7 +141,7 @@ for m in METHODS:
              for k in KEYS]
     a = [np.mean([x["metrics"]["unseen"][c] for x in per]) for c in ("timestamp_auroc", "trajectory_auroc")]
     note = "" if len(per) == 3 else f" ({len(per)} of 3 seeds)"
-    lines.append(f"| own | {m}{note} | {a[0]:.3f} | {a[1]:.3f} | " + " | ".join(cells(o) for o in means) + " |")
+    lines.append(f"| own | {m}{note} | {na(a[0])} | {na(a[1])} | " + " | ".join(cells(o) for o in means) + " |")
 for s in range(3):
     rows = [r for f in sorted(glob.glob(os.path.join(args.root, "own", f"g{s}", "*.json"))) if not f.endswith("per_episode.json")
             for r in json.load(open(f))["rows"]["unseen"]]
@@ -152,7 +158,8 @@ if args.task_table:
         mine = [r for r in loto_rows if r["model"] == "progress" and int(r["eid"][1:3]) == t]
         cf = f"results/{pol}/chunks/task{t}.json"
         c = json.load(open(cf)) if os.path.exists(cf) else None
-        cc = f"{c['queries']} | {c['median_max_diff']:.4f} | {c['max_diff']:.4f}" if c else "none | none | none"
+        fmt = lambda v: "n/a" if v is None else f"{v:.4f}"  # noqa: E731
+        cc = f"{c['queries']} | {fmt(c['median_max_diff'])} | {fmt(c['max_diff'])}" if c else "n/a | n/a | n/a"
         lines.append(f"| {t} | {gate} | {len(mine)} | {sum(not r['success'] and r['t_pnr'] not in (None, 0) for r in mine)} | {cc} |")
 open(os.path.join(args.root, args.table), "w").write("\n".join(lines) + "\n")
 print("\n".join(lines))
