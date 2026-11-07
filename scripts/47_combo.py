@@ -39,7 +39,7 @@ for g in range(args.groups):
     for m in ("progress", "gru_phys_ttp"):
         d = os.path.join(args.progress_root or args.root if m == "progress" else args.root, m, f"g{g}")
         rows[m] = {r["eid"]: r for r in json.load(open(os.path.join(d, "all_scores.json")))}
-        cal[m] = dict(map(tuple, json.load(open(os.path.join(d, "calib.json")))[m]))
+        cal[m] = {x[0]: x[1] for x in json.load(open(os.path.join(d, "calib.json")))[m]}  # [eid, run max(, per-step scores)]
     ids = sorted(cal["progress"])
     assert ids == sorted(cal["gru_phys_ttp"]), f"group {g}: calibration sets differ"
     cp, cg = np.array([cal["progress"][e] for e in ids]), np.array([cal["gru_phys_ttp"][e] for e in ids])

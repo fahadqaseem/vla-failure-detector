@@ -170,7 +170,10 @@ p.add_argument("--lr", type=float, default=1e-3)
 p.add_argument("--weight_decay", type=float, default=1e-3)
 p.add_argument("--hidden", type=int, default=256)
 p.add_argument("--seed", type=int, default=0)
-p.add_argument("--save_calib", action="store_true", help="also write calib.json: per model, (eid, run max) of the cross-fitted calibration successes (Nov 6, OR rule)")
+p.add_argument("--save_calib", action="store_true", help="also write calib.json: per model, (eid, run max, per-step scores) of the cross-fitted calibration successes (Nov 6 OR rule, Nov 7 seed ensemble)")
+p.add_argument("--phys_drop", nargs="+", default=None, help="drop physical columns whose name contains any of these (Nov 7 ablation: goal_dist in_goal / pos_ _dz lifted tilt / contact)")
+p.add_argument("--fresh", nargs="+", default=None, help="episode globs used ONLY as test, never for training or thresholds (Nov 7 fresh Pi0.5 test)")
+p.add_argument("--fresh_mode", choices=["unseen", "seen"], default="unseen", help="unseen: fresh episodes of the held-out task; seen: all fresh episodes, models trained on every old task")
 p.add_argument("--split", choices=["task", "episode"], default="task",
                help="task = leave-one-task-out; episode = 5 folds by episode_idx %% 5 within each task (seen tasks)")
 p.add_argument("--folds", type=int, default=5)
@@ -279,6 +282,9 @@ if args.prechecks:
             precheck_recoverable.add(pc["episode_id"])
 
 files = sorted(f for pat in args.episodes for f in glob.glob(pat))
+fresh_files = sorted(f for pat in (args.fresh or []) for f in glob.glob(pat))
+fresh_ids = {os.path.splitext(os.path.basename(f))[0] for f in fresh_files}
+files = sorted(set(files) | set(fresh_files))
 task_norm = {}  # task -> (mean, std) of features_mean over the first task_norm_steps of its successful runs
 if args.task_norm_steps > 0:
     early = {}
@@ -319,6 +325,10 @@ for f in files:
     x_comb = np.concatenate([x, motion, dfeat, dchunk], axis=1)
     x_priv = np.load(os.path.join(args.privileged, eid + ".npz"))["x"] if args.privileged else None
     phys = np.load(os.path.join(args.phys, eid + ".npz"))["x"].astype(np.float32) if args.phys else None
+    phys_in = phys  # model input; the robot and grasp features below keep every column
+    if phys is not None and args.phys_drop:
+        names = [str(n) for n in np.load(os.path.join(args.phys, eid + ".npz"))["names"]]
+        phys_in = phys[:, [i for i, n in enumerate(names) if not any(d in n for d in args.phys_drop)]]
     assert phys is None or len(phys) == len(q), eid
     robot = np.load(os.path.join(args.robot, eid + ".npz"))["x"].astype(np.float32) if args.robot else None
     t_pnr = t_pnr_from_scan(scan) if scan else None
@@ -352,9 +362,9 @@ for f in files:
     group = int(ep["task_id"]) if args.split == "task" else int(ep["episode_idx"]) % args.folds
     episodes.append(dict(eid=eid, task=int(ep["task_id"]), group=group, success=success, scanned=scan is not None or pre_rec,
                          source="perturbed" if "perturbed" in ep.files else "natural",
-                         t_pnr=t_pnr, doomed=t_pnr == 0, steps=q, x=x, x_comb=x_comb, x_priv=x_priv, phys=phys, label=label, train_label=train_label, risk=risk,
+                         t_pnr=t_pnr, doomed=t_pnr == 0, steps=q, x=x, x_comb=x_comb, x_priv=x_priv, phys=phys_in, label=label, train_label=train_label, risk=risk,
                          feat=feats, x_rest=x_rest, motion=motion, dfeat=dfeat, dchunk=dchunk, ttp=ttp, noisy=noisy,
-                         progress=progress))
+                         progress=progress, fresh=eid in fresh_ids))
 
 labelled = [e for e in episodes if e["scanned"] or e["success"]]
 for src in ["natural", "perturbed"]:
@@ -662,11 +672,14 @@ headline = alarm_key("fixed", args.alpha)
 models = [m for m in models if args.models is None or m in args.models]
 rows_out = []  # one row per (model, held-out episode)
 calib_out = {}  # model -> [eid, run max] of the calibration successes (--save_calib, one held-out group)
-groups = sorted({e["group"] for e in episodes})
-for test_group in groups if args.only_group is None else [args.only_group]:
+groups = sorted({e["group"] for e in episodes if not e["fresh"]})
+loop = groups if args.only_group is None else [args.only_group]
+if args.fresh and args.fresh_mode == "seen":
+    loop = [-1]  # one fit on every old task, scored on all fresh episodes
+for test_group in loop:
     train_groups = [t for t in groups if t != test_group]
-    train_eps = [e for e in episodes if e["group"] != test_group]
-    test = [e for e in labelled if e["group"] == test_group]
+    train_eps = [e for e in episodes if e["group"] != test_group and not e["fresh"]]
+    test = [e for e in labelled if (e["group"] == test_group or test_group == -1) and (e["fresh"] or not args.fresh)]
     for m in models:
         # Calibration scores for each training group's successes, from a model that did not see that group.
         calib = []  # (steps, scores) of every training-group success
@@ -676,7 +689,7 @@ for test_group in groups if args.only_group is None else [args.only_group]:
             cal_u = [e for e in train_eps if e["group"] == u and e["success"] and (args.calib_source == "pooled" or e["source"] == "natural")]
             calib += [(e["steps"], score_u(e)) for e in cal_u]
             calib_ids += [e["eid"] for e in cal_u]
-        calib_out[m] = [[i, float(s.max())] for i, (_, s) in zip(calib_ids, calib)]
+        calib_out[m] = [[i, float(s.max()), [float(v) for v in s]] for i, (_, s) in zip(calib_ids, calib)]
         thresholds = {alarm_key(mode, a): make(calib, a) for mode, make in THRESHOLDS.items() for a in alphas}
         score = fit(m, train_eps)
         for e in test:
@@ -786,7 +799,7 @@ text = "\n".join(lines) + "\n"
 open(os.path.join(args.out, "summary.md"), "w").write(text)
 with open(os.path.join(args.out, "per_episode.json"), "w") as f:
     json.dump([{k: v for k, v in r.items() if k not in ("labels", "scores", "steps", "risk", "ttp")} for r in rows_out], f, indent=1)
-if args.only_group is not None:  # every held-out episode with its per-step scores, for 28_merge_groups.py
+if args.only_group is not None or args.fresh:  # every held-out episode with its per-step scores, for 28_merge_groups.py
     with open(os.path.join(args.out, "all_scores.json"), "w") as f:
         json.dump(rows_out, f)
     if args.save_calib:
