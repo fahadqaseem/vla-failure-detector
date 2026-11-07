@@ -7,3 +7,6 @@
 - job t2-scan-pi05-perturbed-s2-rq 41306599_2 (exit 1), log /wsu/home/hr/hr46/hr4625/vla-failure-detector/logs/t2-scan-pi05-perturbed-s2-rq-41306599_2.out
   time 2026-11-06 20:48
   error: slurmstepd: error: *** JOB 41314968 ON alh3 CANCELLED AT 2026-11-06T20:48:35 DUE TO PREEMPTION ***
+- job pifs-report 41283869 (exit 1), log /wsu/home/hr/hr46/hr4625/vla-failure-detector/logs/pifs-report-41283869.out
+  time 2026-11-07 01:17
+  error: TypeError: unsupported format string passed to NoneType.__format__
