@@ -35,3 +35,19 @@ Goal: solid, repeatable results. Every setting below is reported, whether the ma
    target +30 scanned failures. Its numbers are reported separately and do not change items 2 to 5.
 
 Nothing here changes the PNR definition or its defaults.
+
+## Nov 7 additions (written and pushed before any job of this section started)
+
+(a) Seed ensemble: `gru_phys_ttp_ens` = mean over seeds 0 to 4 of the per-step scores of gru_phys_ttp. Thresholds as usual: fixed conformal on
+    the cross-fitted training-task successes of each fold, here the seed mean of their per-step scores (06 --save_calib now also keeps the
+    per-step calibration scores; gru_phys_ttp seeds 0 to 4 are rerun for that, unseen, both policies, three rules). The OR rule with the ensemble
+    (`or_progress_ens`) uses the same common-level rule as item 4.
+(b) Main rule from now on: 70% (3 of 4 retries fail). 50% and 80% are sensitivity checks. Everything is still reported for all three.
+(c) Fresh Pi0.5 test: once item 6 reaches 70 scanned failures, models are trained on the old Pi0.5 episodes only (natural + perturbed seeds 0 and 1)
+    and scored only on the new ones (perturbed seeds 2 to 4), unseen (leave one task out, new episodes of the held-out task) and seen (all old
+    tasks in training). Same recipe, rules and budgets, thresholds from old training successes, no tuning. Reported in results/pi05/fresh/ only.
+
+Further analyses on existing scores (no tuning, descriptive where marked): task-level robustness (bootstrap over held-out tasks), rule vs first
+visible failure event, one timely-vs-false-alarm curve per policy for every method (thresholds swept on held-out successes, descriptive),
+rescue value from the replay retries, signal ablation (seed 0), few-shot calibration on the held-out task, clock-aware labels (retries count only
+if they succeed by step 520), and breakdowns (natural only, lead time, alarm steps).
