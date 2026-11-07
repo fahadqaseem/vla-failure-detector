@@ -1,0 +1,15 @@
+data/pi05/perturbed/task00_s3/t00_e07_p0_s3.npz
+data/pi05/perturbed/task00_s3/t00_e15_p0_s3.npz
+data/pi05/perturbed/task00_s3/t00_e24_p0_s3.npz
+data/pi05/perturbed/task00_s3/t00_e47_p0_s3.npz
+data/pi05/perturbed/task01_s3/t01_e17_p0_s3.npz
+data/pi05/perturbed/task06_s3/t06_e09_p0_s3.npz
+data/pi05/perturbed/task06_s3/t06_e11_p0_s3.npz
+data/pi05/perturbed/task06_s3/t06_e26_p0_s3.npz
+data/pi05/perturbed/task06_s3/t06_e30_p0_s3.npz
+data/pi05/perturbed/task06_s3/t06_e34_p0_s3.npz
+data/pi05/perturbed/task06_s3/t06_e43_p0_s3.npz
+data/pi05/perturbed/task06_s3/t06_e46_p0_s3.npz
+data/pi05/perturbed/task06_s3/t06_e49_p0_s3.npz
+data/pi05/perturbed/task07_s3/t07_e04_p0_s3.npz
+data/pi05/perturbed/task07_s3/t07_e19_p0_s3.npz
