@@ -3,7 +3,9 @@
 # episodes, whole files only), pre-checks (skip, temp file). Each prints the job ids joined by ":" for a dependency.
 RQ="-p reqp -q requeue --requeue --open-mode=append --gres=gpu:nvidia_l40s:1"
 split_scan() {  # name, number of targets, exports, dependency, F. Both arrays cover the list, from opposite ends.
+    # Nov 7: reqp preempted 3 seed 2 scans on alh3 in one evening, so scans use galhp only unless SCAN_RQ=1.
     local a=$(( ($5 + 1) / 2 )) b=$(( $5 / 2 )) dep=${4:+--dependency=$4} A B
+    [ "${SCAN_RQ:-0}" = 1 ] || { a=$5; b=0; }
     A=$(sbatch --parsable -J "$1" --array=0-$(($2 - 1))%$a $dep --export="$3" slurm/t2_scan_array.sbatch) || return 1
     [ $b -lt 1 ] && { echo "$A"; return; }
     B=$(sbatch --parsable -J "$1-rq" $RQ --array=0-$(($2 - 1))%$b $dep --export="$3",REV=1 slurm/t2_scan_array.sbatch) || return 1

@@ -18,6 +18,7 @@ p.add_argument("--root", required=True)
 p.add_argument("--groups", type=int, default=10)
 p.add_argument("--budgets", nargs="+", type=float, default=[0.05, 0.025])
 p.add_argument("--out", required=True)
+p.add_argument("--progress_root", default=None, help="dir with progress/g*/ (default ROOT); progress has no seed, so seeds 1 to 4 reuse seed 0")
 args = p.parse_args()
 
 
@@ -36,7 +37,7 @@ out, levels = [], {}
 for g in range(args.groups):
     rows, cal = {}, {}
     for m in ("progress", "gru_phys_ttp"):
-        d = os.path.join(args.root, m, f"g{g}")
+        d = os.path.join(args.progress_root or args.root if m == "progress" else args.root, m, f"g{g}")
         rows[m] = {r["eid"]: r for r in json.load(open(os.path.join(d, "all_scores.json")))}
         cal[m] = dict(map(tuple, json.load(open(os.path.join(d, "calib.json")))[m]))
     ids = sorted(cal["progress"])
