@@ -180,3 +180,4 @@ Every number shown in a meeting must trace to a line here.
 | 2026-11-07 | Nov 7 item 6: 06 --phys_drop (goal: goal_dist in_goal; pose: pos_ _dz lifted tilt; contact), gru_phys_ttp seed 0, unseen, 50% and 70% (n6_train.sbatch, data/ablation); 13_report.py, 46_paired_alarms.py | f6db6ff | results/ablation/*_report_*, *_alarms.md | job 41438769 (auto) |
 | 2026-11-07 | Nov 7 audit: 51_tasklevel.py (with ensemble and OR seeds) | defc337 | results/tasklevel/tasklevel.md | job 41438768 (auto) |
 | 2026-11-07 | Nov 7 audit: 57_breakdowns.py | defc337 | results/breakdowns/ | job 41438768 (auto) |
+| 2026-11-07 | Nov 7 audit: 54_rescue.py | defc337 | results/rescue/rescue.md | job 41438768 (auto) |
