@@ -5,6 +5,8 @@ data/seeds/{policy}/thr{T}/{split}/s{S}/{model} (28_merge_groups.py already run)
 t_alarm - t_pnr, and how many seeds beat progress (more timely alarms at the same budget; ties counted apart). Progress has no seed.
 
 python scripts/48_seeds.py --out results/seeds
+Realistic inputs (Nov 7): python scripts/48_seeds.py --seed0 oft:data/realistic/oft pi05:data/realistic/pi05 --seed0_sub merged --root data/seeds_real \
+    --models gru_robotcontact_ttp gru_robot_ttp --thrs 50 80 --splits unseen --name realistic --out results/seeds
 """
 
 import argparse
@@ -17,9 +19,14 @@ p = argparse.ArgumentParser()
 p.add_argument("--seed0", nargs="+", default=["oft:data/week3_reg", "pi05:data/pi05_reg"])
 p.add_argument("--root", default="data/seeds")
 p.add_argument("--out", default="results/seeds")
+p.add_argument("--models", nargs="+", default=["gru_phys_ttp", "gru_phys_frac", "gru_phys"])
+p.add_argument("--thrs", nargs="+", type=int, default=[50, 70, 80])
+p.add_argument("--splits", nargs="+", default=["unseen", "seen"])
+p.add_argument("--seed0_sub", default="", help="subdir of the seed 0 run holding per_episode.json (realistic: merged)")
+p.add_argument("--name", default="seeds", help="output file prefix")
 args = p.parse_args()
 NAMES = {"oft": "OpenVLA-OFT", "pi05": "Pi0.5"}
-MODELS = ["gru_phys_ttp", "gru_phys_frac", "gru_phys"]
+MODELS = args.models
 
 
 def metrics(rows, key):
@@ -37,13 +44,13 @@ def spread(v, fmt):
 
 
 os.makedirs(args.out, exist_ok=True)
-for split in ("unseen", "seen"):
+for split in args.splits:
     lines = [f"# Seeds 0 to 4, {split} tasks", "", __doc__.split("\n\n")[0].replace("\n", " "), "",
              "| policy | rule | budget | model | timely mean (min to max) | progress timely | seeds beating progress (ties) | false alarms | "
              "unnecessary | window |", "|---|---|---|---|---|---|---|---|---|---|"]
     for pol, root0 in (x.split(":", 1) for x in args.seed0):
-        for thr in (50, 70, 80):
-            base = json.load(open(os.path.join(root0, f"thr{thr}", split, "per_episode.json")))
+        for thr in args.thrs:
+            base = json.load(open(os.path.join(root0, f"thr{thr}", split, args.seed0_sub, "per_episode.json")))
             for key in ("fixed 0.025", "fixed 0.05"):
                 pr = metrics([r for r in base if r["model"] == "progress"], key)
                 for m in MODELS:
@@ -56,5 +63,5 @@ for split in ("unseen", "seen"):
                                  f"{spread([x['fa'] for x in per], '{:.3f}')} (progress {pr['fa']:.3f}) | "
                                  f"{spread([x['unn'] for x in per], '{:.1f}')} of {per[0]['n_rec']} (progress {pr['unn']}) | "
                                  f"{spread([x['win'] for x in per], '{:+.0f}')} (progress {pr['win']:+.0f}) |")
-    open(os.path.join(args.out, f"seeds_{split}.md"), "w").write("\n".join(lines) + "\n")
+    open(os.path.join(args.out, f"{args.name}_{split}.md"), "w").write("\n".join(lines) + "\n")
     print("\n".join(lines))
