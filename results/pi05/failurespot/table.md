@@ -4,7 +4,7 @@ Timely of failures with t_pnr > 0; false alarms natural / perturbed successes; u
 
 | split | model | timestamp AUROC | trajectory AUROC | timely 0.05 | false alarms 0.05 | unnecessary 0.05 | window 0.05 | timely 0.025 | false alarms 0.025 | unnecessary 0.025 | window 0.025 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| loto | failurespot_mlp | 0.406 | 0.647 | 0 of 27 | 0.000 / 0.004 | 0 of 7 | +nan | 0 of 27 | 0.000 / 0.002 | 0 of 7 | +nan |
+| loto | failurespot_mlp | 0.406 | 0.647 | 0 of 27 | 0.000 / 0.004 | 0 of 7 | n/a | 0 of 27 | 0.000 / 0.002 | 0 of 7 | n/a |
 | loto | failurespot_lstm | 0.579 | 0.635 | 0 of 27 | 0.024 / 0.013 | 2 of 7 | +144 | 0 of 27 | 0.017 / 0.011 | 1 of 7 | +112 |
 | loto | safe_mlp | 0.754 | 0.866 | 7 of 27 | 0.058 / 0.088 | 4 of 7 | +104 | 5 of 27 | 0.034 / 0.071 | 1 of 7 | +144 |
 | loto | safe_lstm | 0.555 | 0.610 | 1 of 27 | 0.027 / 0.042 | 1 of 7 | +272 | 1 of 27 | 0.021 / 0.018 | 1 of 7 | +376 |
@@ -12,7 +12,7 @@ Timely of failures with t_pnr > 0; false alarms natural / perturbed successes; u
 | loto | supervised_random_lstm | 0.516 | 0.546 | 1 of 27 | 0.000 / 0.002 | 0 of 7 | +208 | 1 of 27 | 0.000 / 0.002 | 0 of 7 | -24 |
 | loto | actprobe_mlp | 0.830 | 0.949 | 8 of 27 | 0.034 / 0.075 | 7 of 7 | +40 | 5 of 27 | 0.017 / 0.038 | 6 of 7 | +136 |
 | loto | actprobe_lstm | 0.815 | 0.993 | 8 of 27 | 0.045 / 0.055 | 7 of 7 | +24 | 5 of 27 | 0.021 / 0.024 | 7 of 7 | +96 |
-| loto | logpzo | 0.458 | 0.439 | 2 of 27 | 0.186 / 0.159 | 0 of 7 | +0 | 0 of 27 | 0.052 / 0.035 | 0 of 7 | +nan |
+| loto | logpzo | 0.458 | 0.439 | 2 of 27 | 0.186 / 0.159 | 0 of 7 | +0 | 0 of 27 | 0.052 / 0.035 | 0 of 7 | n/a |
 | loto | gru_phys (ours) | 0.743 | 0.846 | 3 of 27 | 0.010 / 0.024 | 1 of 7 | +72 | 3 of 27 | 0.003 / 0.015 | 1 of 7 | +128 |
 | loto | gru_phys_ttp (ours) | 0.763 | 0.813 | 9 of 27 | 0.010 / 0.011 | 1 of 7 | -96 | 8 of 27 | 0.007 / 0.007 | 1 of 7 | -64 |
 | own | failurespot_mlp | 0.401 | 0.488 | 3 of 16.7 | 0.294 / 0.297 | 1.33 of 2.67 | -136 | 2.33 of 16.7 | 0.267 / 0.276 | 0.667 of 2.67 | -176 |
