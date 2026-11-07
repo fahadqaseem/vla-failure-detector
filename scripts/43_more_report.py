@@ -22,7 +22,7 @@ for kind, scans in (("natural", "full_scans"), ("perturbed", "perturbed_scans"),
     for d in sorted(glob.glob(f"{base}/{kind}/task*")):
         if not os.path.exists(d + "/index.csv"):
             continue
-        rows = list(csv.DictReader(open(d + "/index.csv")))
+        rows = [r for r in csv.DictReader(open(d + "/index.csv")) if r.get("success") not in (None, "")]  # skip a row being written (Nov 7)
         fails = [r["episode_id"] for r in rows if int(r["success"]) == 0]
         pnr = []
         for e in fails:
