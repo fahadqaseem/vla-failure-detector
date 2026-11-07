@@ -178,3 +178,4 @@ Every number shown in a meeting must trace to a line here.
 | 2026-11-07 | Nov 7: progress OR gru_phys_ttp, seeds 1 to 4 (gru_phys_ttp retrained with --save_calib, data/combo_seeds; progress reused from data/combo), 47_combo.py, 49_combo_seeds.py | f0f8af5 | results/combo/seeds.md | job 41432452 (auto) |
 | 2026-11-07 | Nov 7: gru_robotcontact_ttp and gru_robot_ttp seeds 1 to 4 (n6_train.sbatch, data/seeds_real), seed 0 = data/realistic; 48_seeds.py | 633e63d | results/seeds/realistic_unseen.md | job 41432599 (auto) |
 | 2026-11-07 | Nov 7 item 6: 06 --phys_drop (goal: goal_dist in_goal; pose: pos_ _dz lifted tilt; contact), gru_phys_ttp seed 0, unseen, 50% and 70% (n6_train.sbatch, data/ablation); 13_report.py, 46_paired_alarms.py | f6db6ff | results/ablation/*_report_*, *_alarms.md | job 41438769 (auto) |
+| 2026-11-07 | Nov 7 audit: 51_tasklevel.py (with ensemble and OR seeds) | defc337 | results/tasklevel/tasklevel.md | job 41438768 (auto) |
