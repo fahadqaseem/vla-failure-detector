@@ -10,3 +10,6 @@
 - job pifs-report 41283869 (exit 1), log /wsu/home/hr/hr46/hr4625/vla-failure-detector/logs/pifs-report-41283869.out
   time 2026-11-07 01:17
   error: TypeError: unsupported format string passed to NoneType.__format__
+- job t2-collect-pi05-perturbed-s3-rq 41385823_5 (exit 1), log /wsu/home/hr/hr46/hr4625/vla-failure-detector/logs/t2-collect-pi05-perturbed-s3-rq-41385823_5.out
+  time 2026-11-07 17:15
+  error: KeyError: 'episode_id'

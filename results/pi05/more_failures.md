@@ -18,7 +18,7 @@
 | perturbed | task01 | pass | 50 | 3 | 3 | 3 | 0 | 0 |
 | perturbed | task01_s1 | pass | 50 | 2 | 2 | 1 | 1 | 0 |
 | perturbed | task01_s2 | pass | 50 | 1 | 1 | 1 | 0 | 0 |
-| perturbed | task01_s3 | none | 7 | 0 | 0 | 0 | 0 | 0 |
+| perturbed | task01_s3 | none | 15 | 0 | 0 | 0 | 0 | 0 |
 | perturbed | task02 | FAIL | 50 | 4 | 0 | 0 | 0 | 0 |
 | perturbed | task03 | FAIL | 50 | 2 | 0 | 0 | 0 | 0 |
 | perturbed | task04 | pass | 50 | 4 | 3 | 3 | 0 | 0 |
@@ -38,5 +38,5 @@
 | perturbed | task07_s2 | pass | 50 | 5 | 5 | 5 | 0 | 0 |
 | perturbed | task08 | FAIL | 50 | 18 | 0 | 0 | 0 | 0 |
 | perturbed | task09 | FAIL | 50 | 3 | 0 | 0 | 0 | 0 |
-| **perturbed** | all | | 1233 | 94 | 44 | 31 | 13 | 0 |
+| **perturbed** | all | | 1241 | 94 | 44 | 31 | 13 | 0 |
 | **perturbed_l2** | all | | 0 | 0 | 0 | 0 | 0 | 0 |
