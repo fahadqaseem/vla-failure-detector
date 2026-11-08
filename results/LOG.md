@@ -187,3 +187,4 @@ Every number shown in a meeting must trace to a line here.
 | 2026-11-07 | t2_more round 1 scan: perturbed seed 3, 15 scans 41479219, next 41479220 | 47470de | 53 of 70 scanned failures | job 41385826 (auto) |
 | 2026-11-08 | t2_more round 2 collect: perturbed seed 4, collect 41526369:41526370, pre-check 41526371:41526372, next 41526373 | 4b2d6d9 | 68 of 70 scanned failures | job 41479220 (auto) |
 | 2026-11-08 | t2_more round 2 scan: perturbed seed 4, 2 scans 41532825, next 41532826 | 4c4278c | 68 of 70 scanned failures | job 41526373 (auto) |
+| 2026-11-08 | t2_more round 3 collect: stopped, training none, results/pi05/more_failures.md | 8837731 | 70 of 70 scanned failures | job 41532826 (auto) |
