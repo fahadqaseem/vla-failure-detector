@@ -1,0 +1,2 @@
+data/pi05/perturbed/task00_s4/t00_e06_p0_s4.npz
+data/pi05/perturbed/task00_s4/t00_e07_p0_s4.npz
