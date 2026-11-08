@@ -185,3 +185,4 @@ Every number shown in a meeting must trace to a line here.
 | 2026-11-07 | Nov 7 audit: 56_clock.py, 13_report.py, 46_paired_alarms.py on clock-aware labels | defc337 | results/clock/label_changes.md, *_report_*, *_alarms.md | job 41438768 (auto) |
 | 2026-11-07 | Nov 7 audit: 53_curves.py (SAFE, Hide-and-Seek from data/base70, 06 at 70%) | defc337 | results/curves/curves.md, curves.png | job 41438768 (auto) |
 | 2026-11-07 | t2_more round 1 scan: perturbed seed 3, 15 scans 41479219, next 41479220 | 47470de | 53 of 70 scanned failures | job 41385826 (auto) |
+| 2026-11-08 | t2_more round 2 collect: perturbed seed 4, collect 41526369:41526370, pre-check 41526371:41526372, next 41526373 | 4b2d6d9 | 68 of 70 scanned failures | job 41479220 (auto) |
