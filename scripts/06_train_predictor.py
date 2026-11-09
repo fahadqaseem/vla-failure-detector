@@ -129,6 +129,7 @@ import argparse
 import glob
 import json
 import os
+import sys
 import zlib
 
 import numpy as np
@@ -708,6 +709,13 @@ for test_group in loop:
                 os.makedirs(args.lookahead_out, exist_ok=True)
                 np.savez(os.path.join(args.lookahead_out, e["eid"] + ".npz"), mlp_risk=risk)
     print(f"held-out {args.split} group {test_group}: {len(train_eps)} training episodes, {len(test)} test episodes", flush=True)
+
+
+if not rows_out and args.fresh:  # Nov 9: fresh test, held-out task with no new episodes
+    os.makedirs(args.out, exist_ok=True)
+    json.dump([], open(os.path.join(args.out, "all_scores.json"), "w"))
+    print("no fresh test episodes in this group")
+    sys.exit(0)
 
 
 # ---- metrics ----

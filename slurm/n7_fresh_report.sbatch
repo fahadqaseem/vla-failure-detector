@@ -15,8 +15,8 @@ trap fail EXIT
 O=results/pi05/fresh; mkdir -p $O
 for T in 50 70 80; do for SP in unseen seen; do n=10; [ $SP = seen ] && n=1
   B=data/pi05_fresh/thr$T/$SP
-  for S in 0 1 2 3 4; do python scripts/28_merge_groups.py --dir $B/s$S/gru_phys_ttp --groups $n > /dev/null || exit 1; done
-  python scripts/28_merge_groups.py --dir $B/s0/progress --groups $n > /dev/null || exit 1
+  for S in 0 1 2 3 4; do python scripts/28_merge_groups.py --dir $B/s$S/gru_phys_ttp --groups $n --skip_missing > /dev/null || exit 1; done
+  python scripts/28_merge_groups.py --dir $B/s0/progress --groups $n --skip_missing > /dev/null || exit 1
   mkdir -p $B/ens; for S in 0 1 2 3 4; do ln -sfn ../s$S/gru_phys_ttp $B/ens/s$S; done; ln -sfn ../s0 $B/ens_combo
   python scripts/50_ensemble.py --root $B/ens --combo $B/s0 --groups $n --out $B/merged_ens || exit 1
   python - $B <<'P' || exit 1

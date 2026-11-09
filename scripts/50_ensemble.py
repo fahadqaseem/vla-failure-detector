@@ -29,6 +29,9 @@ key = lambda a: f"fixed {a:.2f}" if round(a, 2) == a else f"fixed {a:.3f}"  # no
 ens_rows, per = [], []
 for g in range(args.groups):
     runs = [os.path.join(args.root, f"s{s}", f"g{g}") for s in range(args.seeds)]
+    if not all(os.path.exists(os.path.join(d, "all_scores.json")) for d in runs):  # fresh test: held-out task with no new episodes
+        print(f"group {g}: no scores, left out")
+        continue
     test = [{r["eid"]: r for r in json.load(open(os.path.join(d, "all_scores.json")))} for d in runs]
     cal = [{x[0]: np.array(x[2]) for x in json.load(open(os.path.join(d, "calib.json")))["gru_phys_ttp"]} for d in runs]
     ids = sorted(cal[0])

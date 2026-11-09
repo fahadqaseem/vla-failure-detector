@@ -1,0 +1,17 @@
+# n9-fresh-report 41690431, last 30 lines (copied Nov 9)
+Traceback (most recent call last):
+  File "/wsu/home/hr/hr46/hr4625/vla-failure-detector/scripts/28_merge_groups.py", line 16, in <module>
+    rows = [r for g in range(args.groups) for r in json.load(open(os.path.join(args.dir, f"g{g}", "all_scores.json")))]
+  File "/wsu/home/hr/hr46/hr4625/vla-failure-detector/scripts/28_merge_groups.py", line 16, in <listcomp>
+    rows = [r for g in range(args.groups) for r in json.load(open(os.path.join(args.dir, f"g{g}", "all_scores.json")))]
+FileNotFoundError: [Errno 2] No such file or directory: 'data/pi05_fresh/thr50/unseen/s0/gru_phys_ttp/g2/all_scores.json'
+pushed: log: n9-fresh-report failed
+
+# example failed training task (groups 2, 3, 5, 8, 9: no new episodes to score)
+logs/n9-fresh-unseen-41690395_2.out
+Traceback (most recent call last):
+  File "/wsu/home/hr/hr46/hr4625/vla-failure-detector/scripts/06_train_predictor.py", line 772, in <module>
+    s = summarise([r for r in rows_out if r["model"] == m])
+  File "/wsu/home/hr/hr46/hr4625/vla-failure-detector/scripts/06_train_predictor.py", line 717, in summarise
+    labels = np.concatenate([r["labels"] for r in rows])
+ValueError: need at least one array to concatenate
