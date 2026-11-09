@@ -11,3 +11,8 @@ label and are not scored (the scan chain stopped at 70 scanned failures, during 
 
 Files: thr{T}_{unseen,seen}_report_fixed_{0.05,0.025}.md (13_report.py), thr{T}_{split}_alarms.md (46_paired_alarms.py), extra.md (task
 bootstrap and rescue value, 58_fresh_extra.py).
+
+Held-out tasks with new episodes: 0, 1, 4, 6, 7 only (unseen split). Tasks 2, 3, 8, 9 have no shifted-start episodes (their natural gate
+failed) and task 5's new folders are gate-failed or the broken seed 3 one, so those 5 folds had nothing to score; their training tasks
+(41690395 to 41690430, array indices 2, 3, 5, 8, 9) failed on the empty test set and were not rerun (report_failure_41690431.txt).
+The report merges the folds that have scores (28_merge_groups.py --skip_missing, 50_ensemble.py skips empty folds). Report job 41704744.
