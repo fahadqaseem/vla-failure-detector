@@ -28,7 +28,7 @@ else
     EPS=("data/pi05/natural/*/*.npz")
     for d in data/pi05/perturbed/task?? data/pi05/perturbed/task??_s1; do [ -f $d/GATE_PASS ] && EPS+=("$d/*.npz"); done  # pre-registered: seeds 0 and 1 (Nov 7: seed 2 of item 6 stays out)
     D=(--prechecks data/pi05/perturbed/prechecks --phys data/pi05/physical --alphas 0.025 0.05 0.10 0.20)
-    [ -d data/pi05/robot_state ] && D+=(--robot data/pi05/robot_state)  # written to a temp dir and renamed when complete (n6-pi05-robot)
+    [[ "$MODEL" = gru_robot* ]] && D+=(--robot data/pi05/robot_state)  # Nov 9: only the robot-input models (seeds 2 to 4 have no robot state)
 fi
 python scripts/06_train_predictor.py --scans "${SCANS[@]}" --episodes "${EPS[@]}" "${D[@]}" --models $MODEL $SP $FT --seed ${SEED:-0} \
     --only_group $G ${EXTRA:-} --out $OUT/g$G
