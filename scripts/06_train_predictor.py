@@ -129,6 +129,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import sys
 import zlib
 
@@ -172,6 +173,7 @@ p.add_argument("--weight_decay", type=float, default=1e-3)
 p.add_argument("--hidden", type=int, default=256)
 p.add_argument("--seed", type=int, default=0)
 p.add_argument("--save_calib", action="store_true", help="also write calib.json: per model, (eid, run max, per-step scores) of the cross-fitted calibration successes (Nov 6 OR rule, Nov 7 seed ensemble)")
+p.add_argument("--phys_keep", nargs="+", default=None, help="keep only physical columns whose full name matches one of these regexes (Nov 12 add-one-signal: one group alone)")
 p.add_argument("--phys_drop", nargs="+", default=None, help="drop physical columns whose name contains any of these (Nov 7 ablation: goal_dist in_goal / pos_ _dz lifted tilt / contact)")
 p.add_argument("--fresh", nargs="+", default=None, help="episode globs used ONLY as test, never for training or thresholds (Nov 7 fresh Pi0.5 test)")
 p.add_argument("--fresh_mode", choices=["unseen", "seen"], default="unseen", help="unseen: fresh episodes of the held-out task; seen: all fresh episodes, models trained on every old task")
@@ -330,6 +332,9 @@ for f in files:
     if phys is not None and args.phys_drop:
         names = [str(n) for n in np.load(os.path.join(args.phys, eid + ".npz"))["names"]]
         phys_in = phys[:, [i for i, n in enumerate(names) if not any(d in n for d in args.phys_drop)]]
+    if phys is not None and args.phys_keep:
+        names = [str(n) for n in np.load(os.path.join(args.phys, eid + ".npz"))["names"]]
+        phys_in = phys[:, [i for i, n in enumerate(names) if any(re.fullmatch(k, n) for k in args.phys_keep)]]
     assert phys is None or len(phys) == len(q), eid
     robot = np.load(os.path.join(args.robot, eid + ".npz"))["x"].astype(np.float32) if args.robot else None
     t_pnr = t_pnr_from_scan(scan) if scan else None
