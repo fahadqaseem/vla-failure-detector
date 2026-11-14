@@ -1,7 +1,7 @@
 # Method: pure regression of the point of no return score (Nov 13, 2026)
 
 Plan: results/plan_nov13.md. Code: scripts/60_regression.py (one run = policy, model, held-out task, seed), scripts/61_regression_report.py
-(metrics), slurm/n13_submit.sh, n13_reg.sbatch, n13_pick.sbatch, n13_report.sbatch. Results: results/regression_v2/. CPU only.
+(metrics), scripts/62_regression_plots.py (plots), slurm/n13_submit.sh, n13_reg.sbatch, n13_report.sbatch. Results: results/regression_v2/. CPU only.
 
 ## Episodes and exclusions
 
@@ -74,8 +74,10 @@ Output of every learned model = sigmoid of the network (`:232`, `:239-245`).
 - Noise floor (`floors`, `:55-62`): per point with K > 1 retries and observed fraction f, MSE f(1 - f) / (K - 1) (unbiased estimate of
   the variance of the observed fraction), MAE = E|X/K - f| with X ~ Binomial(K, f) (plug-in); K 0 points (assumed 0) have floor 0;
   averaged over the same points as the model errors.
-- Best two learned models (`:149-151`): lowest mean over both policies of (MSE (i) + MSE (ii)) / 2 at seed 0; these get seeds 1 to 4
-  (n13_pick.sbatch), reported as mean +- std over seeds (`:184-195`).
+- Seeds (amendment, Nov 13): seeds 0 to 4 for every learned model (torch initialisation and PCA change; data, folds and thresholds do
+  not); seeds.md reports mean and range (min to max) (`:178-187`). Nothing is picked on test results.
+- Files: main.md (seed 0 table), seeds.md, backup.md, per_task.md (secondary), plots/ (62_regression_plots.py: 4 held-out failed runs
+  and 1 success per policy, chosen by the fixed rule in its docstring, true and predicted scores over policy steps).
 
 ## Backup alarms (`61_regression_report.py:89-107`)
 

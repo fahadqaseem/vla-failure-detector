@@ -1,11 +1,10 @@
-"""Report for 60_regression.py (Nov 13 plan, results/plan_nov13.md). Pooled over the 10 held-out tasks.
+"""Report for 60_regression.py (Nov 13 plan and its amendment, results/plan_nov13.md). Pooled over the 10 held-out tasks.
 
-  report.md          seed 0: MSE and MAE on (i) scanned checkpoints of failed runs, (ii) successes, (iii) all known points; Spearman on
-                     failed runs (pooled over points, and median per episode with a non-constant target); binomial noise floor.
-  per_task.md        seed 0: MSE (i) and (ii) per held-out task.
-  backup_alarms.md   seed 0: % of timed failures (t_pnr > 0) caught at or before t_pnr at a 2.5% false-alarm threshold, 50% and 70% rules.
-  best2.txt          the two learned models with the lowest mean over both policies of (MSE (i) + MSE (ii)) / 2 at seed 0.
-  seeds.md           (with --seed_models) mean and std over seeds 0 to 4 of the main metrics.
+  main.md       seed 0: MSE and MAE on (i) scanned checkpoints of failed runs, (ii) successes, (iii) all known points; Spearman on failed
+                runs (pooled over points, and median per episode with a non-constant target); binomial noise floor.
+  seeds.md      every learned model: mean and range (min to max) over the seeds found (0 to 4) of the main metrics.
+  backup.md     seed 0: % of timed failures (t_pnr > 0) caught at or before t_pnr at a 2.5% false-alarm threshold, 50% and 70% rules.
+  per_task.md   seed 0: MSE (i) and (ii) per held-out task (secondary).
 
 Noise floor per point with K retries and observed failure fraction f: MSE f(1 - f) / (K - 1) (unbiased for the binomial variance of f);
 MAE E|X/K - f| with X ~ Binomial(K, f) (plug-in, approximate). Points with an assumed target 0 (K 0) have floor 0.
@@ -25,8 +24,9 @@ p = argparse.ArgumentParser()
 p.add_argument("--root", default="data/regression_v2")
 p.add_argument("--out", default="results/regression_v2")
 p.add_argument("--policies", nargs="+", default=["oft", "pi05"])
-p.add_argument("--seed_models", nargs="*", default=None, help="models with seeds 0 to 4: write seeds.md")
+p.add_argument("--seeds", type=int, default=5)
 p.add_argument("--alpha", type=float, default=0.025)
+p.add_argument("--min_groups", type=int, default=10, help="held-out tasks a run needs to be reported (smoke test: 1)")
 args = p.parse_args()
 LEARNED = ["gru_phys_frac", "safe_lin", "safe_mlp", "safe_lstm", "gru_physvla_frac"]
 MODELS = LEARNED + ["const", "progress_iso", "timer_iso"]
@@ -35,7 +35,7 @@ NAMES = {"oft": "OpenVLA-OFT", "pi05": "Pi0.5"}
 
 def load(policy, model, seed):
     files = sorted(glob.glob(os.path.join(args.root, policy, model, f"s{seed}", "g*.json")))
-    if len(files) != 10:
+    if len(files) < args.min_groups:
         return None
     runs = [json.load(open(f)) for f in files]
     return dict(rows=[r for run in runs for r in run["rows"]], calib={run["held_out"]: [c[1] for c in run["calib"]] for run in runs},
@@ -115,12 +115,12 @@ for pol in args.policies:
         if run:
             runs[pol, m], res[pol, m] = run, metrics(run["rows"])
 
-head = ["# Pure regression of the point of no return score, seed 0 (plan: results/plan_nov13.md)", "",
-        "Target = replay failure fraction at each query; MSE only, every episode weighted equally; leave one task out (10 held-out tasks, "
-        "pooled over points). (i) scanned checkpoints of failed runs, (ii) successes (target 0 unless scanned), (iii) all known points. "
-        "Spearman on failed runs: pooled over points / median per episode (episodes with a non-constant target). Floor = binomial noise of "
-        "the retries (K 4, or 16 where refined); it is the error a perfect predictor of the true failure probability would still have.", ""]
-lines = list(head)
+lines = ["# Pure regression of the point of no return score, seed 0 (plan: results/plan_nov13.md)", "",
+         "Target = replay failure fraction at each query; MSE only, every episode weighted equally; leave one task out (10 held-out tasks, "
+         "pooled over points). (i) scanned checkpoints of failed runs, (ii) successes (target 0 unless scanned), (iii) all known points. "
+         "Spearman on failed runs: pooled over points / median per episode (episodes with a non-constant target). Floor = binomial noise of "
+         "the retries (K 4, or 16 where refined); it is the error a perfect predictor of the true failure probability would still have. "
+         "Seeds 1 to 4 of every learned model are in seeds.md; nothing was picked on test results.", ""]
 for pol in args.policies:
     any_run = next((runs[pol, m] for m in MODELS if (pol, m) in runs), None)
     if any_run is None:
@@ -145,15 +145,7 @@ for pol in args.policies:
               f"{fmt(r['succ']['floor'][1])} | {fmt(r['all']['floor'][0])} | {fmt(r['all']['floor'][1])} |  |  |",
               "", f"Points: (i) {r['fail']['n']}, (ii) {r['succ']['n']}, (iii) {r['all']['n']}. timer_iso is a check (policy step mapped by "
               "isotonic regression), not a candidate.", ""]
-
-score = {m: np.mean([(res[pol, m]["fail"]["mse"] + res[pol, m]["succ"]["mse"]) / 2 for pol in args.policies])
-         for m in LEARNED if all((pol, m) in res for pol in args.policies)}
-best = sorted(score, key=score.get)[:2]
-lines += ["## Best two learned models (pre-registered rule)", "",
-          "Lowest mean over both policies of (MSE (i) + MSE (ii)) / 2 at seed 0:", ""]
-lines += [f"- {m}: {score[m]:.4f}" + (" (picked)" if m in best else "") for m in sorted(score, key=score.get)]
-open(os.path.join(args.out, "report.md"), "w").write("\n".join(lines) + "\n")
-open(os.path.join(args.out, "best2.txt"), "w").write(" ".join(best) + "\n")
+open(os.path.join(args.out, "main.md"), "w").write("\n".join(lines) + "\n")
 
 lines = ["# Per held-out task, seed 0: MSE (i) failed runs (points) / MSE (ii) successes (points)", ""]
 for pol in args.policies:
@@ -179,17 +171,17 @@ for pol in args.policies:
             b = backup(runs[pol, m])
             pct = lambda x: f"{x[0]} of {x[1]} ({100 * x[0] / x[1]:.0f}%)" if x[1] else "n/a"  # noqa: E731
             lines.append(f"| {NAMES[pol]} | {m} | {pct(b['t50'])} | {pct(b['t70'])} | {b['fa']} of {b['n_succ']} ({b['fa'] / b['n_succ']:.3f}) |")
-open(os.path.join(args.out, "backup_alarms.md"), "w").write("\n".join(lines) + "\n")
+open(os.path.join(args.out, "backup.md"), "w").write("\n".join(lines) + "\n")
 
-if args.seed_models:
-    keys = [("MSE (i)", lambda r: r["fail"]["mse"]), ("MSE (ii)", lambda r: r["succ"]["mse"]), ("MSE (iii)", lambda r: r["all"]["mse"]),
-            ("MAE (i)", lambda r: r["fail"]["mae"]), ("Spearman fail", lambda r: r["rho"])]
-    lines = ["# Seeds 0 to 4 for the best two learned models (mean +- std over seeds; n = seeds found)", "",
-             "| policy | model | " + " | ".join(k for k, _ in keys) + " | seeds |", "|---|---|" + "---|" * (len(keys) + 1)]
-    for pol in args.policies:
-        for m in args.seed_models:
-            rs = [metrics(r["rows"]) for r in (load(pol, m, s) for s in range(5)) if r]
-            cells = [f"{np.mean([f(r) for r in rs]):.4f} +- {np.std([f(r) for r in rs]):.4f}" for _, f in keys] if rs else ["n/a"] * len(keys)
-            lines.append(f"| {NAMES[pol]} | {m} | " + " | ".join(cells) + f" | {len(rs)} |")
-    open(os.path.join(args.out, "seeds.md"), "w").write("\n".join(lines) + "\n")
-print(open(os.path.join(args.out, "best2.txt")).read())
+keys = [("MSE (i) fail", lambda r: r["fail"]["mse"]), ("MSE (ii) succ", lambda r: r["succ"]["mse"]), ("MSE (iii) all", lambda r: r["all"]["mse"]),
+        ("MAE (i)", lambda r: r["fail"]["mae"]), ("Spearman fail pooled", lambda r: r["rho"])]
+lines = ["# Every learned model, seeds 0 to 4: mean (min to max) over the seeds found", "",
+         "Same metrics as main.md. Seeds change the torch initialisation and the PCA; data, folds and thresholds are the same.", "",
+         "| policy | model | " + " | ".join(k for k, _ in keys) + " | seeds |", "|---|---|" + "---|" * (len(keys) + 1)]
+for pol in args.policies:
+    for m in LEARNED:
+        rs = [metrics(r["rows"]) for r in (load(pol, m, s) for s in range(args.seeds)) if r]
+        cells = [f"{np.mean(v):.4f} ({np.min(v):.4f} to {np.max(v):.4f})" for v in ([f(r) for r in rs] for _, f in keys)] if rs else ["n/a"] * len(keys)
+        lines.append(f"| {NAMES[pol]} | {m} | " + " | ".join(cells) + f" | {len(rs)} |")
+open(os.path.join(args.out, "seeds.md"), "w").write("\n".join(lines) + "\n")
+print("written:", args.out)
