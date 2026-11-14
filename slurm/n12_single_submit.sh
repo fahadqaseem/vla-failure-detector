@@ -1,13 +1,14 @@
 #!/bin/bash
 # Nov 12 add-one-signal (Fahad): gru_phys_ttp with ONE physical group alone (06 --phys_keep), and each alone OR progress (47_combo.py).
-# 70% rule, unseen (leave-one-task-out), seed 0, both policies, CPU only. Regexes avoid glob characters (EXTRA is unquoted in n6_train). Progress and gru_phys_ttp with all groups are rerun here so every
+# 70% rule, unseen (leave-one-task-out), seed 0, both policies, CPU only. Regexes must have no comma (sbatch --export splits on commas: the Nov 12 gripper runs kept 0 columns)
+# and no glob characters (EXTRA is unquoted in n6_train). Progress and gru_phys_ttp with all groups are rerun here so every
 # row uses the same episode set and calibration successes. Output data/single/{oft,pi05}/thr70, report results/single_signals.
 cd ~/vla-failure-detector
 declare -A KEEP=(
   [goal]='.+_goal_dist .+_in_goal'
   [pose]='.+_pos_. .+_dz .+_lifted .+_tilt'
   [contact]='.+_contact'
-  [gripper]='(obj1|obj2|art)_d{0,1}dist grip_open'
+  [gripper]='(obj1|obj2|art)_dist (obj1|obj2|art)_ddist grip_open'
 )
 ids=()
 for P in oft pi05; do
