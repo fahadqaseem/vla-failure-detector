@@ -71,3 +71,12 @@ Under the 70% rule some kept failures have no t_pnr; they are not timed.
   (gru_phys_frac, safe_lin, safe_mlp, safe_lstm, gru_physvla_frac, baselines) x 10 folds.
 - slurm/n13_pick.sbatch (after seed 0): writes the seed-0 report, picks the best two, submits seeds 1 to 4 for them and the final report.
 - slurm/n13_report.sbatch: results/regression_v2/ (report.md, per_task.md, seeds.md, backup_alarms.md), logs to results/LOG.md, pushes.
+
+## Amendment (Fahad, Nov 13, 2026, before any result was read)
+
+- Seeds: all 5 seeds (0 to 4) for EVERY learned model (gru_phys_frac, safe_lin, safe_mlp, safe_lstm, gru_physvla_frac), both policies.
+  Nothing is picked on test results; the "best two" rule above and n13_pick.sbatch are dropped. seeds.md reports mean and range (min to max).
+- Plots: for 4 held-out failed runs and 1 success per policy, the true score and every model's predicted score over time on one chart
+  each (PNG), results/regression_v2/plots/ (62_regression_plots.py, seed 0).
+- Output layout: results/regression_v2/main.md (main table), seeds.md, backup.md (alarm % at 2.5% false alarms), plots/; per_task.md stays
+  as a secondary file.
