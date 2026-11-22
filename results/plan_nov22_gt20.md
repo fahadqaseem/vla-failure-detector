@@ -58,3 +58,28 @@ No existing data is overwritten: new folders data/gt20_pilot, data/gt20/pooled, 
 ## Logging
 
 Every job goes into results/LOG.md; results are committed and pushed, never data files.
+
+## Amendment (Fahad, Nov 22, 2026, after the pilot timing, before the full run is submitted)
+
+Gate (Fahad): submit the full design only if the measured time per replay is within 1.5x of the scan-based estimate. Pilot (548 new
+replays, L40S): failed 19.3 s measured vs 19.1 s estimated (1.01x), successful 9.2 s vs 8.8 s (1.04x). Passed.
+
+Full design:
+- OpenVLA-OFT: all 136 kept failed runs of regression v2 (results/gt20/targets_oft.txt, 68_gt20_targets.py), every checkpoint (every 8
+  steps), K 20, noise 0.05, extra_steps 200. Reused where settings match: the pilot files (every 16 steps on the 3 pilot runs), else the
+  K 4 scan (seed 0) plus the K 12 refinement (seed 1). New replays seed 20, checked non-overlapping per checkpoint (as the pilot).
+- Pi0.5 after OFT: all 37 kept failed runs (results/gt20/targets_pi05.txt), same grid and K. Its existing scans use noise 0 (Pi0.5's own
+  flow-matching randomness, flow seed drawn from the same rng tuple; decided Oct 23), so the new Pi0.5 replays also use noise 0 to match
+  and reuse them. Seed 20 gives new flow seeds.
+- Code: scripts/67_gt20_worker.py (one worker per GPU job; all workers walk the same list and claim checkpoints by lock files holding the
+  Slurm job id, stale locks taken over, temp file + rename), slurm/gt20_worker.sbatch, slurm/gt20_full_submit.sh. One array with at most
+  5 tasks at once (the GPU cap), starting after the pilot and the L40S control check (no more than 5 GPU jobs at once).
+- GPU type: L40S (galhp) only. Other GPUs we may use: A30 24 GB (reqp, preemptible), H200 (gmsap / reqp, all 16 busy today); V100 (no
+  bf16), RTX 2080 Ti (11 GB) and RTX Pro Blackwell (not supported by our torch 2.2) cannot run it. Check (66_gpu_check.py, same seeds,
+  2 pilot checkpoints, 40 replays): A30 passed the replay gate (eef drift 1.4 mm or less) but gave a different outcome than L40S in
+  12 of 40 replays (19 vs 13 successes) and is about 1.6x slower, so it is not used. For comparison, L40S at two times in October
+  (pre-checks vs scans, same seeds) agreed in 490 of 492 replays. L40S control of the same 40 replays today: job 43506739. Output data/gt20/oft, data/gt20/pi05; GPU name stored for every replay.
+- When the OFT workers end: regression v2 on the OFT 20-replay truth (60_regression.py --target gt20): same episodes and exclusions as
+  regression_v2 (decided on the K 4 scans), failed-run target = failure fraction of the 20 replays at every checkpoint, t_pnr for the
+  backup alarms from the same 20 replays; every model, seeds 0 to 4. Report results/gt20/main.md (same format as regression_v2/main.md),
+  seeds.md, backup.md, per_task.md, plots_reg/ (62_regression_plots.py, same fixed rule).

@@ -42,9 +42,11 @@ p.add_argument("--weight_decay", type=float, default=1e-3)
 p.add_argument("--window", type=int, default=8, help="GRU: queries in the memory window")
 p.add_argument("--pca_dims", type=int, default=128)
 p.add_argument("--progress_m", type=float, default=0.01, help="eef move (m) between queries that counts as progress")
-p.add_argument("--target", choices=["raw", "pooled"], default="raw",
+p.add_argument("--gt20_dir", default=None, help="--target gt20: folder of 67_gt20_worker.py output (<eid>/c<step>.json)")
+p.add_argument("--target", choices=["raw", "pooled", "gt20"], default="raw",
                help="raw = failure fraction at the checkpoint; pooled = failed / all replays over checkpoints k-1, k, k+1 (interim smoothing, "
-                    "results/plan_nov22_gt20.md Step 4)")
+                    "results/plan_nov22_gt20.md Step 4); gt20 = failed runs use the 20-replay truth (--gt20_dir), "
+                    "same episodes and exclusions as raw")
 p.add_argument("--smoke", action="store_true", help="test run: 2 epochs, one cross-fit task")
 args = p.parse_args()
 if args.smoke:
@@ -132,6 +134,12 @@ def load_episodes(policy):
             n["scan_recoverable"] += 1
             continue
         assert "features_mean" in ep.files, f"{eid}: no hidden states"
+        if args.target == "gt20" and not success:  # same episode set as raw; the target and t_pnr come from the K 20 checkpoints
+            files = sorted(glob.glob(os.path.join(args.gt20_dir, eid, "c*.json")))
+            cs = [json.load(open(f)) for f in files]
+            want = [int(c) for c in ep["query_steps"] if int(c) % 8 == 0]
+            assert [c["checkpoint"] for c in cs] == want, f"{eid}: 20-replay checkpoints incomplete ({len(cs)} of {len(want)})"
+            scan = dict(scan, checkpoints=want, successes=[[r["success"] for r in c["replays"]] for c in cs])
         q = ep["query_steps"].astype(int)
         target, K = np.full(len(q), np.nan, np.float32), np.zeros(len(q), int)
         if scan:
