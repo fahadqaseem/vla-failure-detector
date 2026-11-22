@@ -42,6 +42,9 @@ p.add_argument("--weight_decay", type=float, default=1e-3)
 p.add_argument("--window", type=int, default=8, help="GRU: queries in the memory window")
 p.add_argument("--pca_dims", type=int, default=128)
 p.add_argument("--progress_m", type=float, default=0.01, help="eef move (m) between queries that counts as progress")
+p.add_argument("--target", choices=["raw", "pooled"], default="raw",
+               help="raw = failure fraction at the checkpoint; pooled = failed / all replays over checkpoints k-1, k, k+1 (interim smoothing, "
+                    "results/plan_nov22_gt20.md Step 4)")
 p.add_argument("--smoke", action="store_true", help="test run: 2 epochs, one cross-fit task")
 args = p.parse_args()
 if args.smoke:
@@ -132,7 +135,10 @@ def load_episodes(policy):
         q = ep["query_steps"].astype(int)
         target, K = np.full(len(q), np.nan, np.float32), np.zeros(len(q), int)
         if scan:
-            by_step = {int(c): s for c, s in zip(scan["checkpoints"], scan["successes"])}
+            cps, succ = [int(c) for c in scan["checkpoints"]], scan["successes"]
+            if args.target == "pooled":  # failed / all replays over the neighbouring checkpoints i-1, i, i+1 that exist
+                succ = [[v for j in range(max(i - 1, 0), min(i + 2, len(succ))) for v in succ[j]] for i in range(len(succ))]
+            by_step = dict(zip(cps, succ))
             for k, step in enumerate(q):
                 if int(step) in by_step:
                     s = by_step[int(step)]

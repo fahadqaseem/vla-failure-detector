@@ -26,6 +26,8 @@ p.add_argument("--out", default="results/regression_v2")
 p.add_argument("--policies", nargs="+", default=["oft", "pi05"])
 p.add_argument("--seeds", type=int, default=5)
 p.add_argument("--alpha", type=float, default=0.025)
+p.add_argument("--main_name", default="main.md", help="file name of the main table")
+p.add_argument("--note", default="", help="extra paragraph under the main table title (e.g. what the target is)")
 p.add_argument("--min_groups", type=int, default=10, help="held-out tasks a run needs to be reported (smoke test: 1)")
 args = p.parse_args()
 LEARNED = ["gru_phys_frac", "safe_lin", "safe_mlp", "safe_lstm", "gru_physvla_frac"]
@@ -120,7 +122,7 @@ lines = ["# Pure regression of the point of no return score, seed 0 (plan: resul
          "pooled over points). (i) scanned checkpoints of failed runs, (ii) successes (target 0 unless scanned), (iii) all known points. "
          "Spearman on failed runs: pooled over points / median per episode (episodes with a non-constant target). Floor = binomial noise of "
          "the retries (K 4, or 16 where refined); it is the error a perfect predictor of the true failure probability would still have. "
-         "Seeds 1 to 4 of every learned model are in seeds.md; nothing was picked on test results.", ""]
+         "Seeds 1 to 4 of every learned model are in seeds.md; nothing was picked on test results.", ""] + ([args.note, ""] if args.note else [])
 for pol in args.policies:
     any_run = next((runs[pol, m] for m in MODELS if (pol, m) in runs), None)
     if any_run is None:
@@ -145,7 +147,7 @@ for pol in args.policies:
               f"{fmt(r['succ']['floor'][1])} | {fmt(r['all']['floor'][0])} | {fmt(r['all']['floor'][1])} |  |  |",
               "", f"Points: (i) {r['fail']['n']}, (ii) {r['succ']['n']}, (iii) {r['all']['n']}. timer_iso is a check (policy step mapped by "
               "isotonic regression), not a candidate.", ""]
-open(os.path.join(args.out, "main.md"), "w").write("\n".join(lines) + "\n")
+open(os.path.join(args.out, args.main_name), "w").write("\n".join(lines) + "\n")
 
 lines = ["# Per held-out task, seed 0: MSE (i) failed runs (points) / MSE (ii) successes (points)", ""]
 for pol in args.policies:
