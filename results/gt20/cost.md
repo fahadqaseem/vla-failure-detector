@@ -1,14 +1,14 @@
 # Cost plan for a 20-replay ground truth (plan: results/plan_nov22_gt20.md, Step 2)
 
-## Time per replay, OpenVLA-OFT pilot (96 checkpoints done, 1512 new replays, galhp L40S)
+## Time per replay, OpenVLA-OFT pilot (99 checkpoints done, 1560 new replays, galhp L40S)
 
 | replays | n | mean seconds | median | mean steps |
 |---|---|---|---|---|
 | successful | 266 | 9.2 | 8.3 | 260 |
-| failed | 1246 | 14.4 | 14.1 | 444 |
-| all | 1512 | 13.5 | 13.0 | 412 |
+| failed | 1294 | 14.2 | 13.9 | 436 |
+| all | 1560 | 13.4 | 12.7 | 406 |
 
-Fit seconds = 1.66 + 0.0288 x replay steps (a failed replay from step c runs 720 - c steps).
+Fit seconds = 1.65 + 0.0288 x replay steps (a failed replay from step c runs 720 - c steps).
 
 ## Time per replay from the existing K 4 scans (minutes per scan; fit seconds = a + b x steps)
 
@@ -30,13 +30,13 @@ OFT projections below use the pilot fit; Pi0.5 uses its scan fit (no Pi0.5 pilot
 | OpenVLA-OFT | 136 | 16 | K 20 | 70860 | 268 | 2.2 |
 | OpenVLA-OFT | 136 | 16 | adaptive (K 20 where 0.25 <= f4 <= 0.75 or at a change) | 18708 | 71 | 0.6 |
 | OpenVLA-OFT | 136 | 32 | K 8 | 9124 | 34 | 0.3 |
-| OpenVLA-OFT | 136 | 32 | K 20 | 36620 | 138 | 1.2 |
+| OpenVLA-OFT | 136 | 32 | K 20 | 36620 | 138 | 1.1 |
 | OpenVLA-OFT | 136 | 32 | adaptive (K 20 where 0.25 <= f4 <= 0.75 or at a change) | 10248 | 39 | 0.3 |
 | OpenVLA-OFT | 50 | 8 | K 8 | 12736 | 48 | 0.4 |
 | OpenVLA-OFT | 50 | 8 | K 20 | 51208 | 192 | 1.6 |
 | OpenVLA-OFT | 50 | 8 | adaptive (K 20 where 0.25 <= f4 <= 0.75 or at a change) | 16104 | 60 | 0.5 |
 | OpenVLA-OFT | 50 | 16 | K 8 | 6468 | 24 | 0.2 |
-| OpenVLA-OFT | 50 | 16 | K 20 | 26004 | 98 | 0.8 |
+| OpenVLA-OFT | 50 | 16 | K 20 | 26004 | 97 | 0.8 |
 | OpenVLA-OFT | 50 | 16 | adaptive (K 20 where 0.25 <= f4 <= 0.75 or at a change) | 8244 | 31 | 0.3 |
 | OpenVLA-OFT | 50 | 32 | K 8 | 3344 | 12 | 0.1 |
 | OpenVLA-OFT | 50 | 32 | K 20 | 13432 | 50 | 0.4 |
