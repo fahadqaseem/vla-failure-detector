@@ -78,7 +78,7 @@ Full design:
   bf16), RTX 2080 Ti (11 GB) and RTX Pro Blackwell (not supported by our torch 2.2) cannot run it. Check (66_gpu_check.py, same seeds,
   2 pilot checkpoints, 40 replays): A30 passed the replay gate (eef drift 1.4 mm or less) but gave a different outcome than L40S in
   12 of 40 replays (19 vs 13 successes) and is about 1.6x slower, so it is not used. For comparison, L40S at two times in October
-  (pre-checks vs scans, same seeds) agreed in 490 of 492 replays. L40S control of the same 40 replays today: job 43506739. Output data/gt20/oft, data/gt20/pi05; GPU name stored for every replay.
+  (pre-checks vs scans, same seeds) agreed in 490 of 492 replays. L40S control of the same 40 replays today (job 43506739): same outcome in 39 of 40, all 8 October seed-0 replays reproduced, so reusing them is sound. Output data/gt20/oft, data/gt20/pi05; GPU name stored for every replay.
 - When the OFT workers end: regression v2 on the OFT 20-replay truth (60_regression.py --target gt20): same episodes and exclusions as
   regression_v2 (decided on the K 4 scans), failed-run target = failure fraction of the 20 replays at every checkpoint, t_pnr for the
   backup alarms from the same 20 replays; every model, seeds 0 to 4. Report results/gt20/main.md (same format as regression_v2/main.md),
