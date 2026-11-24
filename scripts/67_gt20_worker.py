@@ -62,27 +62,34 @@ def claim(path):
     """Lock = <path>.lock with the owner's job id. Free, own (requeued job keeps its id) or stale (owner not in the queue) -> take it."""
     lock = path + ".lock"
     for _ in range(2):
+        tmp = lock + ".tmp." + ME
+        with open(tmp, "w") as fh:
+            fh.write(ME)
         try:
-            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            os.write(fd, ME.encode())
-            os.close(fd)
-            return True
+            os.link(tmp, lock)  # atomic: the lock never exists without its owner's id (Nov 23 fix)
+            got = True
         except FileExistsError:
-            try:
-                owner = open(lock).read().strip()
-            except FileNotFoundError:
-                continue
-            if owner == ME:
-                return True
-            q = subprocess.run(["squeue", "-h", "-j", owner], capture_output=True, text=True)
-            if q.returncode == 0 and q.stdout.strip():
-                return False
-            if q.returncode != 0 and "Invalid job id" not in q.stderr:
-                return False  # cannot tell: leave it
-            try:
-                os.remove(lock)
-            except FileNotFoundError:
-                pass
+            got = False
+        os.remove(tmp)
+        if got:
+            return True
+        try:
+            owner = open(lock).read().strip()
+        except FileNotFoundError:
+            continue
+        if owner == ME:
+            return True
+        if not owner:
+            return False  # empty owner: never treat as stale (squeue -j "" lists nothing, which looked stale)
+        q = subprocess.run(["squeue", "-h", "-j", owner], capture_output=True, text=True)
+        if q.returncode == 0 and q.stdout.strip():
+            return False
+        if q.returncode != 0 and "Invalid job id" not in q.stderr:
+            return False  # cannot tell: leave it
+        try:
+            os.remove(lock)
+        except FileNotFoundError:
+            pass
     return False
 
 
@@ -143,7 +150,11 @@ for line in open(args.targets):
         with open(path + ".tmp." + ME, "w") as fh:
             json.dump(rec, fh, indent=1)
         os.replace(path + ".tmp." + ME, path)
-        os.remove(path + ".lock")
+        try:
+            if open(path + ".lock").read().strip() == ME:  # remove only our own lock
+                os.remove(path + ".lock")
+        except FileNotFoundError:
+            pass
         print(f"{eid} t={c}: {len(old)} reused + {len(new_keys)} new, successes {sum(r['success'] for r in replays)}/{len(replays)}",
               flush=True)
 print("worker", ME, "found nothing left to claim")
