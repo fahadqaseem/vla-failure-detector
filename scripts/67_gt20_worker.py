@@ -59,14 +59,16 @@ if args.refine:
 
 
 def claim(path):
-    """Lock = <path>.lock with the owner's job id. Free, own (requeued job keeps its id) or stale (owner not in the queue) -> take it."""
+    """Lock = <path>.lock with the owner's job id, written atomically (hard link of a temp file, Nov 23 fix).
+    Free, own (a requeued job keeps its id) -> take it. Empty or unreadable lock (old-code workers create the file first and write the
+    id after) -> held, unless older than 10 minutes. A lock with a job id is stale only if squeue says that id is not in the queue."""
     lock = path + ".lock"
     for _ in range(2):
         tmp = lock + ".tmp." + ME
         with open(tmp, "w") as fh:
             fh.write(ME)
         try:
-            os.link(tmp, lock)  # atomic: the lock never exists without its owner's id (Nov 23 fix)
+            os.link(tmp, lock)
             got = True
         except FileExistsError:
             got = False
@@ -75,22 +77,44 @@ def claim(path):
             return True
         try:
             owner = open(lock).read().strip()
+            age = time.time() - os.path.getmtime(lock)
         except FileNotFoundError:
-            continue
+            continue  # released meanwhile: try again
+        except OSError:
+            return False  # unreadable: held
         if owner == ME:
             return True
         if not owner:
-            return False  # empty owner: never treat as stale (squeue -j "" lists nothing, which looked stale)
-        q = subprocess.run(["squeue", "-h", "-j", owner], capture_output=True, text=True)
-        if q.returncode == 0 and q.stdout.strip():
-            return False
-        if q.returncode != 0 and "Invalid job id" not in q.stderr:
-            return False  # cannot tell: leave it
+            if age < 600:
+                return False  # empty and young: an old-code worker is writing its id
+        else:
+            q = subprocess.run(["squeue", "-h", "-j", owner], capture_output=True, text=True)
+            if q.returncode == 0 and q.stdout.strip():
+                return False  # owner in the queue
+            if q.returncode != 0 and "Invalid job id" not in q.stderr:
+                return False  # cannot tell: leave it
         try:
             os.remove(lock)
         except FileNotFoundError:
             pass
     return False
+
+
+def complete(path):
+    """Checkpoint file present, readable and with at least K replays."""
+    try:
+        return len(json.load(open(path))["replays"]) >= args.K
+    except (OSError, ValueError, KeyError):
+        return False
+
+
+def release(path):
+    """Remove the lock only if it is ours."""
+    try:
+        if open(path + ".lock").read().strip() == ME:
+            os.remove(path + ".lock")
+    except FileNotFoundError:
+        pass
 
 
 policy = Policy()
@@ -105,7 +129,7 @@ for line in open(args.targets):
     ep = np.load(path_ep, allow_pickle=True)
     task, idx = int(ep["task_id"]), int(ep["episode_idx"])
     q_steps = [int(s) for s in ep["query_steps"]]
-    todo = [c for c in q_steps if c % args.every == 0 and not os.path.exists(os.path.join(out_dir, f"c{c:03d}.json"))]
+    todo = [c for c in q_steps if c % args.every == 0 and not complete(os.path.join(out_dir, f"c{c:03d}.json"))]
     if not todo:
         continue
     assert eid in scan_of, f"{eid}: no scan with matching settings"
@@ -118,7 +142,10 @@ for line in open(args.targets):
                                                 for k, (v, e) in enumerate(zip(succ, ends)))
     for c in todo:
         path = os.path.join(out_dir, f"c{c:03d}.json")
-        if os.path.exists(path) or not claim(path):
+        if complete(path) or not claim(path):
+            continue
+        if complete(path):  # written by another worker between the check and the claim
+            release(path)
             continue
         pilot = os.path.join(args.pilot, eid, f"c{c:03d}.json") if args.pilot else None
         if pilot and os.path.exists(pilot):
@@ -147,14 +174,14 @@ for line in open(args.targets):
                                 source="new", gpu=GPU))
         rec = dict(episode_id=eid, task_id=task, episode_idx=idx, checkpoint=c, t_end=int(ep["t_end"]), replays=replays,
                    params=dict(SAME, every=args.every, K=args.K, new_seed=args.seed, node=os.uname().nodename, job=ME, gpu=GPU))
+        if complete(path):  # another worker wrote it meanwhile (same seeds): keep the first copy
+            release(path)
+            print(f"{eid} t={c}: already written by another worker, skipped", flush=True)
+            continue
         with open(path + ".tmp." + ME, "w") as fh:
             json.dump(rec, fh, indent=1)
         os.replace(path + ".tmp." + ME, path)
-        try:
-            if open(path + ".lock").read().strip() == ME:  # remove only our own lock
-                os.remove(path + ".lock")
-        except FileNotFoundError:
-            pass
+        release(path)
         print(f"{eid} t={c}: {len(old)} reused + {len(new_keys)} new, successes {sum(r['success'] for r in replays)}/{len(replays)}",
               flush=True)
 print("worker", ME, "found nothing left to claim")
