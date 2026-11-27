@@ -49,6 +49,12 @@ p.add_argument("--target", choices=["raw", "pooled", "gt20"], default="raw",
                     "same episodes and exclusions as raw")
 p.add_argument("--smoke", action="store_true", help="test run: 2 epochs, one cross-fit task")
 args = p.parse_args()
+if args.target == "gt20":  # first step: the 20-replay truth must be complete (70_gt20_complete.py writes the error to progress.md)
+    import subprocess
+    import sys
+    if subprocess.run([sys.executable, "scripts/70_gt20_complete.py", "--targets", f"results/gt20/targets_{args.policy}.txt",
+                       "--dir", args.gt20_dir]).returncode:
+        sys.exit("--target gt20: 20-replay truth incomplete, see results/gt20/progress.md")
 if args.smoke:
     args.epochs = 2
 torch.set_num_threads(int(os.environ.get("OMP_NUM_THREADS", "8")))

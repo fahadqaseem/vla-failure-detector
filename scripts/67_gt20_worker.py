@@ -119,69 +119,82 @@ def release(path):
 
 policy = Policy()
 envs = {}
-for line in open(args.targets):
-    path_ep = line.strip()
-    if not path_ep:
-        continue
-    eid = os.path.splitext(os.path.basename(path_ep))[0]
-    out_dir = os.path.join(args.out, eid)
-    os.makedirs(out_dir, exist_ok=True)
-    ep = np.load(path_ep, allow_pickle=True)
-    task, idx = int(ep["task_id"]), int(ep["episode_idx"])
-    q_steps = [int(s) for s in ep["query_steps"]]
-    todo = [c for c in q_steps if c % args.every == 0 and not complete(os.path.join(out_dir, f"c{c:03d}.json"))]
-    if not todo:
-        continue
-    assert eid in scan_of, f"{eid}: no scan with matching settings"
-    reuse = {}
-    for f in scan_of[eid]:
-        s = json.load(open(f))
-        for c, succ, ends in zip(s["checkpoints"], s["successes"], s["end_steps"]):
-            reuse.setdefault(int(c), []).extend(dict(seed=s["params"]["seed"], k=k, success=int(v), end_step=int(e), seconds=None,
-                                                     source="reused", gpu="L40S (earlier scan)")
-                                                for k, (v, e) in enumerate(zip(succ, ends)))
-    for c in todo:
-        path = os.path.join(out_dir, f"c{c:03d}.json")
-        if complete(path) or not claim(path):
+# Passes over the run list until no checkpoint is missing (Nov 27, second pass): a checkpoint skipped because another job held its
+# lock is looked at again; if that job died, its lock is stale and taken over (claim).
+n_pass = 0
+while True:
+    n_pass += 1
+    waiting = 0
+    for line in open(args.targets):
+        path_ep = line.strip()
+        if not path_ep:
             continue
-        if complete(path):  # written by another worker between the check and the claim
+        eid = os.path.splitext(os.path.basename(path_ep))[0]
+        out_dir = os.path.join(args.out, eid)
+        os.makedirs(out_dir, exist_ok=True)
+        ep = np.load(path_ep, allow_pickle=True)
+        task, idx = int(ep["task_id"]), int(ep["episode_idx"])
+        q_steps = [int(s) for s in ep["query_steps"]]
+        todo = [c for c in q_steps if c % args.every == 0 and not complete(os.path.join(out_dir, f"c{c:03d}.json"))]
+        if not todo:
+            continue
+        assert eid in scan_of, f"{eid}: no scan with matching settings"
+        reuse = {}
+        for f in scan_of[eid]:
+            s = json.load(open(f))
+            for c, succ, ends in zip(s["checkpoints"], s["successes"], s["end_steps"]):
+                reuse.setdefault(int(c), []).extend(dict(seed=s["params"]["seed"], k=k, success=int(v), end_step=int(e), seconds=None,
+                                                         source="reused", gpu="L40S (earlier scan)")
+                                                    for k, (v, e) in enumerate(zip(succ, ends)))
+        for c in todo:
+            path = os.path.join(out_dir, f"c{c:03d}.json")
+            if complete(path):
+                continue
+            if not claim(path):
+                waiting += 1  # held by a live job (or cannot tell): look again on the next pass
+                continue
+            if complete(path):  # written by another worker between the check and the claim
+                release(path)
+                continue
+            pilot = os.path.join(args.pilot, eid, f"c{c:03d}.json") if args.pilot else None
+            if pilot and os.path.exists(pilot):
+                pj = json.load(open(pilot))
+                old = [dict(r, source="reused", gpu="NVIDIA L40S (pilot)" if r["source"] == "new" else "L40S (earlier scan)")
+                       for r in pj["replays"]]  # the pilot ran on L40S only (galhp)
+            else:
+                old = reuse.get(c, [])
+            old = old[: args.K]
+            old_keys = {(r["seed"], r["k"]) for r in old}
+            new_keys = [(args.seed, k) for k in range(args.K) if (args.seed, k) not in old_keys][: args.K - len(old)]
+            assert not old_keys & set(new_keys)
+            first = lambda s, k: np.random.default_rng([s, task, idx, c, k]).normal(0, 1, 6)  # noqa: E731
+            for a in new_keys:
+                fa = first(*a)
+                assert not any(np.allclose(fa, first(*b)) for b in old_keys), (eid, c, a)
+            if task not in envs:
+                envs[task] = make_task(task)
+            env, desc, _ = envs[task]
+            replays = list(old)
+            for s, k in new_keys:
+                t0 = time.time()
+                r = rollout(env, policy, desc, episode=ep, query=q_steps.index(c), noise_std=args.noise_std,
+                            rng=np.random.default_rng([s, task, idx, c, k]), record_states=False, horizon=max_steps() + args.extra_steps)
+                replays.append(dict(seed=s, k=k, success=int(r.success), end_step=int(r.t_end), seconds=round(time.time() - t0, 2),
+                                    source="new", gpu=GPU))
+            rec = dict(episode_id=eid, task_id=task, episode_idx=idx, checkpoint=c, t_end=int(ep["t_end"]), replays=replays,
+                       params=dict(SAME, every=args.every, K=args.K, new_seed=args.seed, node=os.uname().nodename, job=ME, gpu=GPU))
+            if complete(path):  # another worker wrote it meanwhile (same seeds): keep the first copy
+                release(path)
+                print(f"{eid} t={c}: already written by another worker, skipped", flush=True)
+                continue
+            with open(path + ".tmp." + ME, "w") as fh:
+                json.dump(rec, fh, indent=1)
+            os.replace(path + ".tmp." + ME, path)
             release(path)
-            continue
-        pilot = os.path.join(args.pilot, eid, f"c{c:03d}.json") if args.pilot else None
-        if pilot and os.path.exists(pilot):
-            pj = json.load(open(pilot))
-            old = [dict(r, source="reused", gpu="NVIDIA L40S (pilot)" if r["source"] == "new" else "L40S (earlier scan)")
-                   for r in pj["replays"]]  # the pilot ran on L40S only (galhp)
-        else:
-            old = reuse.get(c, [])
-        old = old[: args.K]
-        old_keys = {(r["seed"], r["k"]) for r in old}
-        new_keys = [(args.seed, k) for k in range(args.K) if (args.seed, k) not in old_keys][: args.K - len(old)]
-        assert not old_keys & set(new_keys)
-        first = lambda s, k: np.random.default_rng([s, task, idx, c, k]).normal(0, 1, 6)  # noqa: E731
-        for a in new_keys:
-            fa = first(*a)
-            assert not any(np.allclose(fa, first(*b)) for b in old_keys), (eid, c, a)
-        if task not in envs:
-            envs[task] = make_task(task)
-        env, desc, _ = envs[task]
-        replays = list(old)
-        for s, k in new_keys:
-            t0 = time.time()
-            r = rollout(env, policy, desc, episode=ep, query=q_steps.index(c), noise_std=args.noise_std,
-                        rng=np.random.default_rng([s, task, idx, c, k]), record_states=False, horizon=max_steps() + args.extra_steps)
-            replays.append(dict(seed=s, k=k, success=int(r.success), end_step=int(r.t_end), seconds=round(time.time() - t0, 2),
-                                source="new", gpu=GPU))
-        rec = dict(episode_id=eid, task_id=task, episode_idx=idx, checkpoint=c, t_end=int(ep["t_end"]), replays=replays,
-                   params=dict(SAME, every=args.every, K=args.K, new_seed=args.seed, node=os.uname().nodename, job=ME, gpu=GPU))
-        if complete(path):  # another worker wrote it meanwhile (same seeds): keep the first copy
-            release(path)
-            print(f"{eid} t={c}: already written by another worker, skipped", flush=True)
-            continue
-        with open(path + ".tmp." + ME, "w") as fh:
-            json.dump(rec, fh, indent=1)
-        os.replace(path + ".tmp." + ME, path)
-        release(path)
-        print(f"{eid} t={c}: {len(old)} reused + {len(new_keys)} new, successes {sum(r['success'] for r in replays)}/{len(replays)}",
-              flush=True)
+            print(f"{eid} t={c}: {len(old)} reused + {len(new_keys)} new, successes {sum(r['success'] for r in replays)}/{len(replays)}",
+                  flush=True)
+    if waiting == 0:
+        break
+    print(f"worker {ME}: pass {n_pass} done, {waiting} checkpoints held by other jobs, next pass in 120 s", flush=True)
+    time.sleep(120)
 print("worker", ME, "found nothing left to claim")
